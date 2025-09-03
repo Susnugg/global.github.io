@@ -257,23 +257,33 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, updateDoc, onSnapshot, runTransaction, setLogLevel, setDoc, increment, collection, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Set Firebase logging level to debug
     setLogLevel('debug');
 
     // --- Firebase Initialization ---
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // IMPORTANT: REPLACE THE FOLLOWING PLACEHOLDER CONFIG WITH YOUR OWN FIREBASE PROJECT'S CONFIG
+    // You can get this from your Firebase console -> Project settings -> General
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // A unique ID for this app's data. You can change this to anything you want.
+    const appId = "galactic-clicker-gh-pages";
 
     let app, auth, db;
     let userId = null;
     let userName = null;
     let isAuthReady = false;
     let localGameState = { clicks: 0, upgrades: {}, global_boost: 1 };
-    let localUserData = { personalClicks: 0, chat_effects: [] };
+    let localUserData = { personalClicks: 0, cpc: 1, chat_effects: [] };
     let chatUnsubscribe = null;
     
     // UI elements
@@ -364,11 +374,8 @@
             auth = getAuth(app);
             db = getFirestore(app);
 
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
+            // This will sign the user in anonymously since the custom token is not available.
+            await signInAnonymously(auth);
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
@@ -402,7 +409,7 @@
                     // Initialize user data if it doesn't exist
                     const userDataDocSnap = await getDoc(userDataDocRef);
                     if (!userDataDocSnap.exists()) {
-                         await setDoc(userDataDocRef, { personalClicks: 0, chat_effects: [] });
+                         await setDoc(userDataDocRef, { personalClicks: 0, cpc: 1, chat_effects: [] });
                     }
                     
                     // Start real-time listeners for game state and chat
@@ -452,7 +459,7 @@
             });
         } catch (error) {
             console.error("Error initializing Firebase:", error);
-            document.getElementById('app').innerHTML = `<p class="text-red-500 text-center text-lg">Failed to connect to the game server. Please refresh the page.</p>`;
+            document.getElementById('app').innerHTML = `<p class="text-red-500 text-center text-lg">Failed to connect to the game server. Please ensure your Firebase credentials are correct and deployed on a live server.</p>`;
         }
     };
     
@@ -472,12 +479,10 @@
         clicksDisplay.textContent = Math.floor(clicks).toLocaleString();
         personalClicksDisplay.textContent = Math.floor(personalClicks).toLocaleString();
         
-        let totalCpc = 1; // Base CPC
         let totalCps = 0;
         
         upgradesData.forEach(upgrade => {
             const level = upgrades[upgrade.id] || 0;
-            totalCpc += calculateCpc(upgrade, level);
             totalCps += calculateCps(upgrade, level);
         });
 
@@ -590,8 +595,18 @@
         const userDataDocRef = doc(db, USER_DATA_PATH, userId, 'user_data', 'data');
 
         try {
-            await updateDoc(gameStateDocRef, { clicks: increment(1) });
-            await updateDoc(userDataDocRef, { personalClicks: increment(1) });
+            await runTransaction(db, async (transaction) => {
+                const userDataDocSnap = await transaction.get(userDataDocRef);
+                if (!userDataDocSnap.exists()) {
+                    throw "User document does not exist!";
+                }
+                
+                const data = userDataDocSnap.data();
+                const currentCpc = data.cpc || 1;
+                
+                transaction.update(gameStateDocRef, { clicks: increment(currentCpc) });
+                transaction.update(userDataDocRef, { personalClicks: increment(currentCpc) });
+            });
         } catch (e) {
             console.error("Error incrementing clicks:", e);
         }
