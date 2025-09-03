@@ -259,7 +259,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, updateDoc, onSnapshot, runTransaction, setLogLevel, setDoc, increment, collection, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    import { initializeApp } from "firebase/app";
+    import { getAnalytics } from "firebase/analytics";
     // Set Firebase logging level to debug
     setLogLevel('debug');
 
@@ -267,14 +268,16 @@
     // IMPORTANT: REPLACE THE FOLLOWING PLACEHOLDER CONFIG WITH YOUR OWN FIREBASE PROJECT'S CONFIG
     // You can get this from your Firebase console -> Project settings -> General
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
-
+  apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
+  authDomain: "global-3c3db.firebaseapp.com",
+  projectId: "global-3c3db",
+  storageBucket: "global-3c3db.firebasestorage.app",
+  messagingSenderId: "580963150943",
+  appId: "1:580963150943:web:05649b5b9a8093547bffea",
+  measurementId: "G-64G0ZY3HD5"
+};
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
     // A unique ID for this app's data. You can change this to anything you want.
     const appId = "galactic-clicker-gh-pages";
 
