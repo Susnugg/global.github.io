@@ -153,57 +153,62 @@
         let username = 'Guest';
 
         // --- Modal Control Functions ---
-        const showModal = (message, title = "Info") => {
+        const showModal = (message) => {
             customModal.classList.remove('hidden');
             customModal.querySelector('#modal-message').textContent = message;
             customModal.querySelector('#modal-close-button').onclick = () => customModal.classList.add('hidden');
         };
 
         // --- Firebase & App Initialization ---
-        const initFirebase = () => {
+        const initFirebase = async () => {
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+                console.log('Firebase services initialized successfully.');
 
                 // Initial sign-in with custom token or anonymously
-                const signInWithToken = async () => {
-                    try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (error) {
-                        console.error("Auth token sign-in failed:", error);
-                        authStatus.textContent = "Sign-in failed. Please refresh.";
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
                     }
-                };
-                signInWithToken();
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                    showModal(`Authentication failed. Please check your network or refresh the page. (Error: ${error.code})`);
+                }
 
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                         // Setup message listener immediately
                         setupRealtimeListener();
-
-                        const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
-                        const userDocSnap = await getDoc(userDocRef);
                         
-                        if (userDocSnap.exists()) {
-                            username = userDocSnap.data().username;
-                            authModal.classList.add('hidden');
-                            chatApp.classList.remove('hidden');
-                            updateUserInfo();
-                        } else {
-                            // New user: show username creation modal
-                            username = 'Guest';
-                            authModal.classList.remove('hidden');
-                            authTitle.textContent = "Welcome! Set your Username";
-                            authStatus.textContent = "Please choose a username to continue.";
-                            authForm.classList.remove('hidden');
-                            chatApp.classList.add('hidden');
+                        // Check if user profile exists
+                        const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
+                        try {
+                            const userDocSnap = await getDoc(userDocRef);
+                            
+                            if (userDocSnap.exists()) {
+                                username = userDocSnap.data().username;
+                                authModal.classList.add('hidden');
+                                chatApp.classList.remove('hidden');
+                                updateUserInfo();
+                            } else {
+                                // New user: show username creation modal
+                                username = 'Guest';
+                                authModal.classList.remove('hidden');
+                                authTitle.textContent = "Welcome! Set your Username";
+                                authStatus.textContent = "Please choose a username to continue.";
+                                authForm.classList.remove('hidden');
+                                chatApp.classList.add('hidden');
+                            }
+                        } catch (error) {
+                            console.error("Error fetching user profile:", error);
+                            showModal("Could not load user profile. Please try again later.");
                         }
+
                     } else {
                         userId = null;
                         username = 'Guest';
@@ -212,8 +217,8 @@
                     }
                 });
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                showModal("Could not connect to the database. Please check your connection.");
+                console.error("Error initializing Firebase services:", error);
+                showModal("Could not connect to the database. Please check your connection and refresh the page.");
             }
         };
 
@@ -228,7 +233,10 @@
 
         // Setup the real-time listener for chat messages
         const setupRealtimeListener = () => {
-            if (!db) return;
+            if (!db) {
+                console.error("Firestore DB not initialized. Cannot set up listener.");
+                return;
+            }
             const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
             const messagesRef = collection(db, collectionPath);
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
@@ -302,6 +310,10 @@
             }
             
             try {
+                if (!db || !userId) {
+                    showModal("Database not ready. Please wait a moment and try again.");
+                    return;
+                }
                 // Save the new username to the user's profile
                 const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
                 await setDoc(userDocRef, {
