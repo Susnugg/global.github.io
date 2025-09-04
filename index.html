@@ -175,13 +175,9 @@
         // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- IMPORTANT: INSERT YOUR FIREBASE CONFIG HERE ---
-        // Step 1: Go to your Firebase Console > Project Settings.
-        // Step 2: Under "Your apps," select the "Web" app (or create one).
-        // Step 3: Copy the 'firebaseConfig' object and paste it below.
-        // DO NOT PASTE THE __firebase_config VARIABLE HERE.
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Use the global variables provided by the environment
         const firebaseConfig = {
             apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
             authDomain: "global-3c3db.firebaseapp.com",
@@ -191,7 +187,9 @@
             appId: "1:580963150943:web:05649b5b9a8093547bffea",
             measurementId: "G-64G0ZY3HD5"
         };
-        const appId = firebaseConfig.appId;
+        const appId = firebaseConfig.projectId;
+
+        setLogLevel('debug'); // Enable debug logging for Firestore
 
         // --- DOM Elements ---
         const messagesContainer = document.getElementById('messages-container');
@@ -291,9 +289,9 @@
                     }
                 });
                 
-                // Initial sign-in with anonymous auth
+                // Initial sign-in with anonymous authentication
                 try {
-                    await signInAnonymously(auth);
+                     await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Authentication failed:", error);
                     showModal(`Authentication failed. Please check your network or refresh the page. (Error: ${error.code})`);
@@ -623,10 +621,7 @@
         };
 
         const removeMember = async (memberId, memberUsername, groupName) => {
-            const confirmed = confirm(`Are you sure you want to remove ${memberUsername} from ${groupName}?`);
-            if (!confirmed) {
-                return;
-            }
+            showModal(`Removing ${memberUsername} from ${groupName}...`);
 
             try {
                 const groupDocRef = doc(db, `/artifacts/${appId}/group_chats/${currentChatId}`);
