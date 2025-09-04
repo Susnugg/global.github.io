@@ -34,17 +34,43 @@
         .chat-messages::-webkit-scrollbar-track {
             background-color: #1f1f1f;
         }
+        .message-bubble {
+            animation: fadeInUp 0.5s ease-out;
+        }
         .message-input-container {
             display: flex;
             padding: 1rem;
             background-color: #1f1f1f;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* Custom gradient border for Admin status */
+        .admin-border {
+            position: relative;
+            z-index: 1;
+        }
+        .admin-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px; /* controls the border thickness */
+            border-radius: 0.75rem; /* Matches parent rounded-xl */
+            background: linear-gradient(to right, #B91C1C, #4A0404);
+            z-index: -1;
         }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
 
     <!-- Main Chat Interface -->
-    <div class="chat-container bg-gray-900 rounded-xl shadow-2xl max-w-4xl mx-auto">
+    <div class="chat-container bg-gray-900 rounded-xl shadow-2xl max-w-4xl mx-auto transition-shadow duration-300">
         
         <!-- Header -->
         <div class="p-4 border-b border-gray-700">
@@ -66,7 +92,7 @@
             <div class="flex items-center space-x-2 mb-4">
                 <input type="text" id="nickname-input" placeholder="Set your nickname" class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" autocomplete="off" />
                 <button id="set-nickname-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Set</button>
-                <button id="vip-button" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Enter Code</button>
+                <button id="admin-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Enter Code</button>
             </div>
 
             <!-- Message Input -->
@@ -78,8 +104,8 @@
     </div>
 
     <!-- Custom Modal for Alerts & Code Input -->
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg max-w-sm w-full border border-gray-700">
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 transition-all duration-300">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg max-w-sm w-full border border-gray-700 transition-all duration-300">
             <div id="modal-content">
                 <div class="text-white text-lg font-semibold mb-4" id="modal-message"></div>
                 <div id="modal-actions" class="flex justify-end">
@@ -113,7 +139,7 @@
         const sendButton = document.getElementById('send-button');
         const nicknameInput = document.getElementById('nickname-input');
         const setNicknameButton = document.getElementById('set-nickname-button');
-        const vipButton = document.getElementById('vip-button');
+        const adminButton = document.getElementById('admin-button');
         const userInfoDiv = document.getElementById('user-info');
         const modal = document.getElementById('custom-modal');
         const modalContent = document.getElementById('modal-content');
@@ -124,7 +150,7 @@
         let db, auth;
         let userId;
         let nickname = 'Guest';
-        let isVIP = false;
+        let isAdmin = false;
 
         // --- Modal Control Functions ---
         const showModal = (message) => {
@@ -140,11 +166,11 @@
 
         const showCodeModal = () => {
             modalContent.innerHTML = `
-                <div class="text-white text-lg font-semibold mb-4">Enter VIP Code</div>
+                <div class="text-white text-lg font-semibold mb-4">Enter Admin Code</div>
                 <input type="text" id="code-input" placeholder="Enter code..." class="w-full p-3 bg-gray-700 text-white rounded-xl focus:outline-none mb-4" autocomplete="off" />
                 <div class="flex justify-end space-x-2">
                     <button id="cancel-button" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-xl transition duration-200">Cancel</button>
-                    <button id="submit-code-button" class="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-xl transition duration-200">Submit</button>
+                    <button id="submit-code-button" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-xl transition duration-200">Submit</button>
                 </div>
             `;
             modal.classList.remove('hidden');
@@ -152,10 +178,10 @@
             document.getElementById('submit-code-button').onclick = () => {
                 const codeInput = document.getElementById('code-input');
                 if (codeInput.value === '1982') {
-                    isVIP = true;
-                    localStorage.setItem('isVIP', 'true');
+                    isAdmin = true;
+                    localStorage.setItem('isAdmin', 'true');
                     updateUserInfo();
-                    showModal("Success! You now have a fancy VIP border.");
+                    showModal("Success! You now have a fancy Admin border.");
                 } else {
                     showModal("Incorrect code. Please try again.");
                 }
@@ -190,23 +216,23 @@
             }
         }
 
-        // Load nickname and VIP status from localStorage
+        // Load nickname and Admin status from localStorage
         const loadState = () => {
             const storedNickname = localStorage.getItem('chatNickname');
             if (storedNickname) {
                 nickname = storedNickname;
                 nicknameInput.value = nickname;
             }
-            const storedVIP = localStorage.getItem('isVIP');
-            if (storedVIP === 'true') {
-                isVIP = true;
+            const storedAdmin = localStorage.getItem('isAdmin');
+            if (storedAdmin === 'true') {
+                isAdmin = true;
             }
             updateUserInfo();
         };
 
         // Update the user info display
         const updateUserInfo = () => {
-            let statusText = isVIP ? 'VIP' : 'Guest';
+            let statusText = isAdmin ? 'Admin' : 'Guest';
             userInfoDiv.textContent = `User ID: ${userId.substring(0, 8)}... | Nickname: ${nickname} | Status: ${statusText}`;
         };
 
@@ -232,31 +258,35 @@
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
 
             onSnapshot(messagesQuery, (snapshot) => {
-                messagesContainer.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const message = doc.data();
-                    const messageElement = document.createElement('div');
-                    
-                    const isCurrentUser = message.userId === userId;
-                    const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
-                    const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
-                    const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
-                    const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
-                    const displayName = isCurrentUser ? 'You' : (message.nickname || 'Guest');
-                    const vipBorder = message.isVIP ? 'ring-4 ring-yellow-500' : '';
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        const message = change.doc.data();
+                        const messageElement = document.createElement('div');
+                        
+                        const isCurrentUser = message.userId === userId;
+                        const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
+                        const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
+                        const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
+                        const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
+                        const displayName = isCurrentUser ? 'You' : (message.nickname || 'Guest');
+                        const adminBorder = message.isAdmin ? 'admin-border' : '';
+                        const nicknameClass = message.isAdmin ? 'font-bold text-red-400' : 'font-bold text-gray-400';
 
-                    messageElement.className = `flex ${flexAlignment} mb-2`;
-                    messageElement.innerHTML = `
-                        <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${vipBorder} break-words shadow-md">
-                            <span class="font-bold text-xs text-gray-400 block mb-1">
-                                ${displayName}
-                            </span>
-                            ${message.text}
-                        </div>
-                    `;
-                    messagesContainer.appendChild(messageElement);
+                        messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
+                        messageElement.innerHTML = `
+                            <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${adminBorder} break-words shadow-md transition-all duration-300">
+                                <span class="text-xs block mb-1 ${nicknameClass}">
+                                    ${displayName}
+                                </span>
+                                ${message.text}
+                            </div>
+                        `;
+                        messagesContainer.appendChild(messageElement);
+
+                        // Scroll to the bottom of the messages container
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
                 });
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, (error) => {
                 console.error("Error fetching messages:", error);
                 showModal("Failed to load messages. Please refresh.");
@@ -277,7 +307,7 @@
                     nickname: nickname,
                     text: messageText,
                     timestamp: serverTimestamp(),
-                    isVIP: isVIP
+                    isAdmin: isAdmin
                 });
                 
                 messageInput.value = '';
@@ -300,7 +330,7 @@
                 setNickname();
             }
         });
-        vipButton.addEventListener('click', showCodeModal);
+        adminButton.addEventListener('click', showCodeModal);
 
         // Start the application
         window.onload = () => {
