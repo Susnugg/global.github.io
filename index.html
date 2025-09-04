@@ -491,16 +491,24 @@
 
                 const groupDoc = querySnapshot.docs[0];
                 const groupId = groupDoc.id;
-                const groupName = groupDoc.data().name;
+                const groupData = groupDoc.data();
+                const members = groupData.members || [];
+
+                if (members.includes(userId)) {
+                    showModal(`You are already a member of "${groupData.name}".`);
+                    groupsModal.classList.add('hidden');
+                    startGroupChat(groupId, groupData.name);
+                    return;
+                }
 
                 // Add user to the members array
                 await updateDoc(doc(db, `/artifacts/${appId}/group_chats/${groupId}`), {
                     members: arrayUnion(userId)
                 });
                 
-                showModal(`You have joined the group "${groupName}"!`);
+                showModal(`You have joined the group "${groupData.name}"!`);
                 groupsModal.classList.add('hidden');
-                startGroupChat(groupId, groupName);
+                startGroupChat(groupId, groupData.name);
 
             } catch (e) {
                 console.error("Error joining group:", e);
