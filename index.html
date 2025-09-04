@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galactic Clicker</title>
+    <title>Galactic Clicker - Multiplayer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         body {
@@ -18,7 +19,7 @@
             padding: 1rem;
         }
         .container {
-            max-width: 1600px;
+            max-width: 1200px;
             width: 100%;
             background-color: #1a202c;
             border-radius: 1.5rem;
@@ -60,94 +61,17 @@
             50% { opacity: 0.8; }
             100% { transform: scale(1.5); opacity: 0; }
         }
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            background-color: #2d3748;
-            border-radius: 1rem;
-            height: 500px;
-            overflow: hidden;
-        }
-        .chat-messages {
-            flex-grow: 1;
+        #chat-box {
+            height: 300px;
             overflow-y: auto;
-            padding: 1rem;
             display: flex;
             flex-direction: column-reverse;
-            gap: 0.5rem;
         }
-        .chat-input {
-            display: flex;
-            padding: 1rem;
-            border-top: 1px solid #4a5568;
-        }
-        .message-bubble {
-            background-color: #4a5568;
-            padding: 0.5rem 1rem;
-            border-radius: 1.5rem;
-        }
-        .message-bubble .emoji {
-            width: 1.5rem;
-            height: 1.5rem;
-            display: inline-block;
-            vertical-align: middle;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.75);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-        }
-        .modal-content {
-            background-color: #1a202c;
-            padding: 2rem;
-            border-radius: 1rem;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-            width: 90%;
-            max-width: 400px;
-        }
-        .emoji-modal-content {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.5rem;
-            padding: 1rem;
-        }
-        .chat-channel-button {
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-        .chat-channel-button.active {
-            background-color: #63b3ed;
-            color: #1a202c;
-        }
-        .rainbow-text {
-            background-image: linear-gradient(to right, #ef5350, #f48fb1, #7e57c2, #2196f3, #43a047, #ffeb3b, #fb8c00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .tab-button {
+        .chat-message {
             background-color: #2d3748;
-            color: #e2e8f0;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: bold;
-            transition: all 0.2s;
-            text-align: center;
-            flex-grow: 1;
-        }
-        .tab-button.active {
-            background-color: #4a5568;
-            color: #63b3ed;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
         }
     </style>
 </head>
@@ -158,11 +82,11 @@
     <div id="game-area" class="flex flex-col items-center justify-center flex-grow">
         <h1 class="text-4xl md:text-5xl font-bold text-center text-indigo-400">Galactic Core Clicker</h1>
         
-        <p class="text-xl md:text-2xl font-semibold mt-4">Global Energy: <span id="clicks-display" class="font-bold text-green-400 text-3xl md:text-4xl">0</span></p>
-        <p class="text-xl md:text-2xl font-semibold">Personal Energy: <span id="personal-clicks-display" class="font-bold text-purple-400 text-3xl md:text-4xl">0</span></p>
-
-        <p id="cps-display" class="text-sm md:text-base text-gray-400">Generating <span class="font-bold">0</span> energy per second</p>
+        <p class="text-xl md:text-2xl font-semibold mt-4">Your Energy: <span id="clicks-display" class="font-bold text-green-400 text-3xl md:text-4xl">0</span></p>
+        <p class="text-sm md:text-base text-gray-400">Generating <span id="cps-display" class="font-bold">0</span> energy per second</p>
         
+        <p class="text-xl md:text-2xl font-semibold mt-4">Global Energy: <span id="global-energy-display" class="font-bold text-yellow-400 text-3xl md:text-4xl">0</span></p>
+
         <div class="relative mt-8">
             <button id="click-button" class="relative z-10 p-6 md:p-8 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 transition-colors duration-200 rounded-full shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transform scale-100 active:scale-95">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 md:h-32 md:w-32 text-white" viewBox="0 0 24 24" fill="currentColor">
@@ -171,173 +95,35 @@
             </button>
             <div id="pulse-effect" class="absolute inset-0 bg-indigo-500 rounded-full opacity-0 pulse-animation"></div>
         </div>
-        
-        <p class="text-xs text-gray-500 text-center mt-4">Your ID: <span id="user-id"></span></p>
-    </div>
 
-    <!-- Right-side content: Tabs and Chat -->
-    <div class="flex flex-col lg:flex-row flex-grow w-full gap-4">
-        <!-- Tabbed Area (Shops) -->
-        <div id="shops-container" class="flex-grow w-full bg-gray-800 p-6 rounded-2xl shadow-inner space-y-4">
-            <!-- Tab Buttons -->
-            <div class="flex flex-wrap justify-center gap-2 mb-4">
-                <button id="tab-upgrades" class="tab-button active">Upgrades</button>
-                <button id="tab-shop" class="tab-button">Personal Shop</button>
-            </div>
-            
-            <!-- Tab Content -->
-            <div class="w-full">
-                <!-- Upgrades Tab Content -->
-                <div id="upgrades-tab-content" class="tab-content" >
-                    <h2 class="text-2xl font-bold text-center mb-4 text-yellow-400">Upgrades</h2>
-                    <div id="upgrades-list" class="space-y-4 max-h-[400px] overflow-y-auto">
-                        <!-- Upgrades will be dynamically added here -->
-                    </div>
-                </div>
-
-                <!-- Personal Shop Tab Content -->
-                <div id="shop-tab-content" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-center mb-4 text-fuchsia-400">Personal Shop</h2>
-                    <div id="shop-items-list" class="space-y-4 max-h-[400px] overflow-y-auto">
-                        <!-- Shop items will be dynamically added here -->
-                    </div>
-                </div>
+        <!-- Chat Section -->
+        <div class="w-full mt-8 bg-gray-800 p-4 rounded-xl shadow-inner">
+            <h2 class="text-xl font-bold mb-2 text-center text-cyan-400">Global Chat</h2>
+            <div id="chat-box" class="space-y-2 mb-4"></div>
+            <div class="flex gap-2">
+                <input id="chat-input" type="text" placeholder="Send a message..." class="flex-grow p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring focus:ring-cyan-500 focus:outline-none" />
+                <button id="send-button" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white font-bold transition-colors">Send</button>
             </div>
         </div>
+    </div>
 
-        <!-- Chat Area -->
-        <div id="chat-area" class="flex flex-col flex-grow w-full bg-gray-800 p-6 rounded-2xl shadow-inner space-y-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-center text-cyan-400">Global Chat</h2>
-                <!-- Toggle Shops Button -->
-                <button id="toggle-shops-button" class="bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors duration-200 py-2 px-4 rounded-full text-sm font-semibold whitespace-nowrap">
-                    Collapse Shops
-                </button>
-            </div>
-
-            <!-- Chat Channel Buttons -->
-            <div class="flex flex-wrap justify-center gap-2 mb-4">
-                <button id="channel-main" class="chat-channel-button bg-gray-700 text-gray-300">Main</button>
-                <button id="channel-strategy" class="chat-channel-button bg-gray-700 text-gray-300">Strategy</button>
-                <button id="channel-trading" class="chat-channel-button bg-gray-700 text-gray-300">Trading</button>
-            </div>
-
-            <div id="chat-container" class="chat-container">
-                <div id="chat-messages" class="chat-messages"></div>
-                <div class="chat-input">
-                    <button id="emoji-button" class="bg-gray-700 text-white rounded-l-full px-4 py-2 hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500">😀</button>
-                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-grow bg-gray-700 text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                    <button id="send-button" class="bg-cyan-600 text-white rounded-r-full px-6 py-2 ml-1 hover:bg-cyan-500 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500">Send</button>
-                </div>
-                <!-- Message Box -->
-                <div id="message-box" class="fixed inset-x-0 bottom-4 text-center p-3 rounded-xl mx-auto max-w-sm shadow-lg z-50 hidden"></div>
-            </div>
+    <!-- Upgrade Area -->
+    <div id="shops-container" class="flex-grow w-full bg-gray-800 p-6 rounded-2xl shadow-inner space-y-4">
+        <h2 class="text-2xl font-bold text-center mb-4 text-yellow-400">Upgrades</h2>
+        <div id="upgrades-list" class="space-y-4 max-h-[400px] overflow-y-auto">
+            <!-- Upgrades will be dynamically added here -->
         </div>
     </div>
 </div>
 
-<!-- Name Modal -->
-<div id="name-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h2 class="text-2xl font-bold mb-4">Set Your Name</h2>
-        <p class="text-gray-300 mb-4">Choose a name to use in the chat.</p>
-        <input type="text" id="name-input" placeholder="Enter your name" maxlength="20" class="w-full p-3 rounded-lg bg-gray-700 text-white mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500">
-        <button id="save-name-button" class="w-full bg-cyan-600 text-white py-3 rounded-lg font-bold hover:bg-cyan-500 transition-colors duration-200">Save Name</button>
-    </div>
-</div>
+<script>
+    // --- Supabase Client Setup ---
+    // You MUST replace these with your own project URL and Public API Key
+    const SUPABASE_URL = 'https://onrzplpqmxbfsftlzgye.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ucnpwbHBxbXhiZnNmdGx6Z3llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NDQ5NDAsImV4cCI6MjA3MjUyMDk0MH0.TMi4QXeum3ttKConJ8W-Fz8zbWVZChhfMksJrjDfQWg';
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-<!-- Emoji Modal -->
-<div id="emoji-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h2 class="text-2xl font-bold mb-4">Choose an Emoji</h2>
-        <div id="emoji-list" class="emoji-modal-content"></div>
-        <button id="close-emoji-modal" class="mt-4 bg-gray-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-gray-500 transition-colors duration-200">Close</button>
-    </div>
-</div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, updateDoc, onSnapshot, runTransaction, setLogLevel, setDoc, increment, collection, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { initializeApp } from "firebase/app";
-    import { getAnalytics } from "firebase/analytics";
-    // Set Firebase logging level to debug
-    setLogLevel('debug');
-
-    // --- Firebase Initialization ---
-    // IMPORTANT: REPLACE THE FOLLOWING PLACEHOLDER CONFIG WITH YOUR OWN FIREBASE PROJECT'S CONFIG
-    // You can get this from your Firebase console -> Project settings -> General
-    const firebaseConfig = {
-  apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
-  authDomain: "global-3c3db.firebaseapp.com",
-  projectId: "global-3c3db",
-  storageBucket: "global-3c3db.firebasestorage.app",
-  messagingSenderId: "580963150943",
-  appId: "1:580963150943:web:05649b5b9a8093547bffea",
-  measurementId: "G-64G0ZY3HD5"
-};
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    // A unique ID for this app's data. You can change this to anything you want.
-    const appId = "galactic-clicker-gh-pages";
-
-    let app, auth, db;
-    let userId = null;
-    let userName = null;
-    let isAuthReady = false;
-    let localGameState = { clicks: 0, upgrades: {}, global_boost: 1 };
-    let localUserData = { personalClicks: 0, cpc: 1, chat_effects: [] };
-    let chatUnsubscribe = null;
-    
-    // UI elements
-    const clicksDisplay = document.getElementById('clicks-display');
-    const personalClicksDisplay = document.getElementById('personal-clicks-display');
-    const cpsDisplay = document.getElementById('cps-display');
-    const clickButton = document.getElementById('click-button');
-    const upgradesList = document.getElementById('upgrades-list');
-    const shopItemsList = document.getElementById('shop-items-list');
-    const userIdDisplay = document.getElementById('user-id');
-    const nameModal = document.getElementById('name-modal');
-    const nameInput = document.getElementById('name-input');
-    const saveNameButton = document.getElementById('save-name-button');
-    const chatInput = document.getElementById('chat-input');
-    const sendButton = document.getElementById('send-button');
-    const emojiButton = document.getElementById('emoji-button');
-    const chatMessages = document.getElementById('chat-messages');
-    const emojiModal = document.getElementById('emoji-modal');
-    const emojiList = document.getElementById('emoji-list');
-    const closeEmojiModalButton = document.getElementById('close-emoji-modal');
-    const toggleShopsButton = document.getElementById('toggle-shops-button');
-    const shopsContainer = document.getElementById('shops-container');
-    const chatArea = document.getElementById('chat-area');
-    const messageBox = document.getElementById('message-box');
-
-
-    // Tab UI elements
-    const upgradesTabBtn = document.getElementById('tab-upgrades');
-    const shopTabBtn = document.getElementById('tab-shop');
-    const tabButtons = [upgradesTabBtn, shopTabBtn];
-    const upgradesContent = document.getElementById('upgrades-tab-content');
-    const shopContent = document.getElementById('shop-tab-content');
-    const tabContents = {
-        'upgrades-tab': upgradesContent,
-        'shop-tab': shopContent,
-    };
-
-    // Chat Channel UI elements
-    const channelMainBtn = document.getElementById('channel-main');
-    const channelStrategyBtn = document.getElementById('channel-strategy');
-    const channelTradingBtn = document.getElementById('channel-trading');
-    const channelButtons = [channelMainBtn, channelStrategyBtn, channelTradingBtn];
-
-    // --- Game Data Paths ---
-    const GAME_STATE_PATH = `/artifacts/${appId}/public/data/clicker_game`;
-    const CHAT_ROOT_PATH = `/artifacts/${appId}/public/data/chat_channels`;
-    const USER_DATA_PATH = `/artifacts/${appId}/users`;
-    const CHAT_CHANNELS = ['main', 'strategy', 'trading'];
-    let currentChannel = 'main';
-
-    // Upgrade data structure
+    // --- Game Data ---
     const upgradesData = [
         { id: 'cursor', name: 'Quantum Cursor', baseCost: 10, baseCpc: 1, baseCps: 0.1 },
         { id: 'nano-bot', name: 'Nanobot Swarm', baseCost: 100, baseCpc: 0.5, baseCps: 1 },
@@ -350,166 +136,91 @@
         { id: 'galaxy-forge', name: 'Galaxy Forge', baseCost: 20000000, baseCpc: 0, baseCps: 7800 },
     ];
 
-    // Shop items data structure
-    const shopItemsData = [
-        { id: 'global-boost', name: 'Global Boost', description: 'Multiplies everyone\'s CPS by 1.2', cost: 50000, type: 'global_buff', value: 1.2 },
-        { id: 'rainbow-chat', name: 'Rainbow Chat', description: 'Gives your messages a rainbow effect', cost: 1000, type: 'chat_effect' },
-    ];
+    // --- UI Elements ---
+    const clicksDisplay = document.getElementById('clicks-display');
+    const cpsDisplay = document.getElementById('cps-display');
+    const globalEnergyDisplay = document.getElementById('global-energy-display');
+    const clickButton = document.getElementById('click-button');
+    const upgradesList = document.getElementById('upgrades-list');
+    const chatBox = document.getElementById('chat-box');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
     
-    // Emoji data with placeholder images
-    const emojis = {
-        'happy': 'https://placehold.co/32x32?text=😊',
-        'love': 'https://placehold.co/32x32?text=💖',
-        'star': 'https://placehold.co/32x32?text=⭐',
-        'rocket': 'https://placehold.co/32x32?text=🚀',
-        'gem': 'https://placehold.co/32x32?text=💎',
-        'cool': 'https://placehold.co/32x32?text=😎',
-        'celebrate': 'https://placehold.co/32x32?text=🎉',
-        'thumbsup': 'https://placehold.co/32x32?text=👍',
-        'fire': 'https://placehold.co/32x32?text=🔥',
-        'sad': 'https://placehold.co/32x32?text=😢',
+    // --- Game State ---
+    let userId;
+    let gameState = {
+        clicks: 0,
+        upgrades: upgradesData.reduce((acc, upgrade) => {
+            acc[upgrade.id] = 0;
+            return acc;
+        }, {}),
+        cpc: 1,
+        cps: 0
+    };
+    let globalState = {
+        global_energy: 0
     };
 
-    // --- Core Functions ---
-    const initializeGame = async () => {
+    // --- Supabase Initialization ---
+    const initSupabase = async () => {
         try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (error) throw error;
+            userId = data.user.id;
+            console.log("Signed in anonymously. User ID:", userId);
+            
+            // Initial data fetch
+            await loadPlayerState();
+            await fetchAndUpdateGlobalState();
+            await fetchAndUpdateChat();
 
-            // This will sign the user in anonymously since the custom token is not available.
-            await signInAnonymously(auth);
-
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    userIdDisplay.textContent = userId;
-                    isAuthReady = true;
-
-                    // Load name from local storage
-                    userName = localStorage.getItem('userName');
-                    if (!userName) {
-                        nameModal.classList.remove('hidden');
-                    }
-
-                    // Listen to both public game state and private user data
-                    const gameStateDocRef = doc(db, GAME_STATE_PATH, 'state');
-                    const userDataDocRef = doc(db, USER_DATA_PATH, userId, 'user_data', 'data');
-                    
-                    // Initialize game state if it doesn't exist
-                    const gameStateDocSnap = await getDoc(gameStateDocRef);
-                    if (!gameStateDocSnap.exists()) {
-                        await setDoc(gameStateDocRef, {
-                            clicks: 0,
-                            upgrades: upgradesData.reduce((acc, upgrade) => {
-                                acc[upgrade.id] = 0;
-                                return acc;
-                            }, {}),
-                            global_boost: 1,
-                        });
-                    }
-
-                    // Initialize user data if it doesn't exist
-                    const userDataDocSnap = await getDoc(userDataDocRef);
-                    if (!userDataDocSnap.exists()) {
-                         await setDoc(userDataDocRef, { personalClicks: 0, cpc: 1, chat_effects: [] });
-                    }
-                    
-                    // Start real-time listeners for game state and chat
-                    onSnapshot(gameStateDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const data = docSnap.data();
-                            localGameState = data;
-                            updateUI(data, localUserData);
-                        }
-                    });
-
-                    onSnapshot(userDataDocRef, (docSnap) => {
-                        if(docSnap.exists()) {
-                            const data = docSnap.data();
-                            localUserData = data;
-                            updateUI(localGameState, data);
-                        }
-                    });
-
-                    // Set up initial chat listener
-                    setupChatListener(currentChannel);
-                    updateChannelButtons();
-
-                    // Start the CPS loop
-                    setInterval(async () => {
-                        const gameStateDocRef = doc(db, GAME_STATE_PATH, 'state');
-                        let totalCps = 0;
-                        upgradesData.forEach(upgrade => {
-                            const level = localGameState.upgrades[upgrade.id] || 0;
-                            totalCps += calculateCps(upgrade, level);
-                        });
-                        
-                        const globalBoost = localGameState.global_boost || 1;
-                        totalCps *= globalBoost;
-
-                        if (totalCps > 0) {
-                            try {
-                                await updateDoc(gameStateDocRef, { clicks: increment(totalCps) });
-                            } catch (e) {
-                                console.error("Error updating clicks from CPS:", e);
-                            }
-                        }
-                    }, 1000);
-                } else {
-                    console.log("No user is signed in.");
-                }
-            });
+            // Set up polling instead of real-time listeners
+            setInterval(fetchAndUpdateGlobalState, 2000); // Poll every 2 seconds
+            setInterval(fetchAndUpdateChat, 2000); // Poll every 2 seconds
+            
+            updateUI();
         } catch (error) {
-            console.error("Error initializing Firebase:", error);
-            document.getElementById('app').innerHTML = `<p class="text-red-500 text-center text-lg">Failed to connect to the game server. Please ensure your Firebase credentials are correct and deployed on a live server.</p>`;
+            console.error('Error during Supabase initialization:', error.message);
         }
     };
-    
-    // Calculate costs and effects based on current upgrade levels
-    const calculateCost = (upgrade, level) => Math.floor(upgrade.baseCost * Math.pow(1.15, level));
-    const calculateCpc = (upgrade, level) => upgrade.baseCpc * level;
-    const calculateCps = (upgrade, level) => upgrade.baseCps * level;
 
-    // Updates the UI based on the game state from Firestore
-    const updateUI = (gameState, userData) => {
-        const clicks = gameState.clicks || 0;
-        const personalClicks = userData.personalClicks || 0;
-        const upgrades = gameState.upgrades || {};
-        const globalBoost = gameState.global_boost || 1;
-        const chatEffects = userData.chat_effects || [];
-
-        clicksDisplay.textContent = Math.floor(clicks).toLocaleString();
-        personalClicksDisplay.textContent = Math.floor(personalClicks).toLocaleString();
-        
-        let totalCps = 0;
-        
-        upgradesData.forEach(upgrade => {
-            const level = upgrades[upgrade.id] || 0;
-            totalCps += calculateCps(upgrade, level);
-        });
-
-        totalCps *= globalBoost;
-
-        const roundedCps = Math.floor(totalCps * 10) / 10;
-        cpsDisplay.innerHTML = `Generating <span class="font-bold">${roundedCps.toLocaleString()}</span> energy per second`;
-
-        renderUpgrades(clicks, upgrades);
-        renderShopItems(personalClicks, chatEffects);
+    // --- Core Game Functions ---
+    const updateUI = () => {
+        clicksDisplay.textContent = Math.floor(gameState.clicks).toLocaleString();
+        const roundedCps = Math.floor(gameState.cps * 10) / 10;
+        cpsDisplay.textContent = `${roundedCps.toLocaleString()} energy per second`;
+        globalEnergyDisplay.textContent = Math.floor(globalState.global_energy).toLocaleString();
+        renderUpgrades();
     };
 
-    // Renders the list of upgrades
-    const renderUpgrades = (currentClicks, currentLevels) => {
+    const calculateCost = (upgrade, level) => Math.floor(upgrade.baseCost * Math.pow(1.15, level));
+    const calculateCps = () => {
+        let totalCps = 0;
+        upgradesData.forEach(upgrade => {
+            const level = gameState.upgrades[upgrade.id] || 0;
+            totalCps += upgrade.baseCps * level;
+        });
+        return totalCps;
+    };
+    const calculateCpc = () => {
+        let totalCpc = 1;
+        upgradesData.forEach(upgrade => {
+            const level = gameState.upgrades[upgrade.id] || 0;
+            totalCpc += upgrade.baseCpc * level;
+        });
+        return totalCpc;
+    };
+
+    const renderUpgrades = () => {
         upgradesList.innerHTML = '';
         upgradesData.forEach(upgrade => {
-            const currentLevel = currentLevels[upgrade.id] || 0;
+            const currentLevel = gameState.upgrades[upgrade.id] || 0;
             const cost = calculateCost(upgrade, currentLevel);
-            const canAfford = currentClicks >= cost;
+            const canAfford = gameState.clicks >= cost;
 
             const button = document.createElement('button');
             button.className = `upgrade-button w-full p-4 rounded-xl shadow-md transform active:scale-98 transition-transform duration-100 ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gray-600 opacity-50 cursor-not-allowed'}`;
             button.innerHTML = `
-                <!-- min-w-0 prevents the text from overflowing its container in flexbox layouts -->
                 <div class="flex-1 text-left min-w-0">
                     <p class="font-bold text-lg whitespace-normal">${upgrade.name}</p>
                     <p class="text-sm text-gray-300">Level: <span id="${upgrade.id}-level">${currentLevel}</span></p>
@@ -529,321 +240,133 @@
         });
     };
 
-    // Renders the personal shop items
-    const renderShopItems = (currentPersonalClicks, purchasedEffects) => {
-        shopItemsList.innerHTML = '';
-        shopItemsData.forEach(item => {
-            const canAfford = currentPersonalClicks >= item.cost;
-            const isOwned = purchasedEffects.includes(item.id);
-
-            const button = document.createElement('button');
-            button.className = `upgrade-button w-full p-4 rounded-xl shadow-md transform active:scale-98 transition-transform duration-100 ${canAfford && !isOwned ? 'bg-fuchsia-600 hover:bg-fuchsia-500' : 'bg-gray-600 opacity-50 cursor-not-allowed'}`;
-            button.innerHTML = `
-                <div class="flex-1 text-left">
-                    <p class="font-bold text-lg">${item.name}</p>
-                    <p class="text-sm text-gray-300">${item.description}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-lg font-bold text-yellow-300">${item.cost.toLocaleString()}</p>
-                    <p class="text-sm text-gray-400">Personal Energy</p>
-                </div>
-            `;
-            button.disabled = !canAfford || isOwned;
-            if (isOwned) {
-                button.innerHTML = `<div class="flex-1 text-left"><p class="font-bold text-lg">${item.name}</p><p class="text-sm text-gray-300">Owned</p></div>`;
-                button.classList.add('bg-gray-700', 'text-gray-400', 'opacity-50');
-            } else {
-                 button.addEventListener('click', () => buyShopItem(item.id));
-            }
-            shopItemsList.appendChild(button);
-        });
-    };
-
-    // Renders chat messages
-    const renderMessages = (messages) => {
-        chatMessages.innerHTML = '';
-        const emojiRegex = new RegExp(`:(${Object.keys(emojis).join('|')}):`, 'g');
-        messages.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message-bubble';
-            const senderName = msg.userId === userId ? 'You' : msg.userName || 'Guest';
-
-            // Sanitize text and replace emoji codes
-            let sanitizedText = new Option(msg.text).innerHTML;
-            sanitizedText = sanitizedText.replace(emojiRegex, (match, p1) => {
-                const url = emojis[p1];
-                return `<img src="${url}" class="emoji" alt="${p1}" />`;
-            });
-
-            // Apply chat effect if available
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = `${senderName}:`;
-            nameSpan.className = 'font-bold text-cyan-300';
-            
-            if (msg.chat_effect === 'rainbow-chat') {
-                nameSpan.classList.remove('text-cyan-300');
-                nameSpan.classList.add('rainbow-text');
-            }
-
-            messageDiv.innerHTML = `${nameSpan.outerHTML} ${sanitizedText}`;
-            chatMessages.prepend(messageDiv);
-        });
-    };
-
-    // --- Click & Upgrade Logic ---
-    clickButton.addEventListener('click', async () => {
-        if (!isAuthReady) return;
-        
-        const gameStateDocRef = doc(db, GAME_STATE_PATH, 'state');
-        const userDataDocRef = doc(db, USER_DATA_PATH, userId, 'user_data', 'data');
-
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userDataDocSnap = await transaction.get(userDataDocRef);
-                if (!userDataDocSnap.exists()) {
-                    throw "User document does not exist!";
-                }
-                
-                const data = userDataDocSnap.data();
-                const currentCpc = data.cpc || 1;
-                
-                transaction.update(gameStateDocRef, { clicks: increment(currentCpc) });
-                transaction.update(userDataDocRef, { personalClicks: increment(currentCpc) });
-            });
-        } catch (e) {
-            console.error("Error incrementing clicks:", e);
-        }
-    });
-
     const buyUpgrade = async (upgradeId) => {
-        if (!isAuthReady) return;
-
-        const gameStateDocRef = doc(db, GAME_STATE_PATH, 'state');
         const upgrade = upgradesData.find(u => u.id === upgradeId);
-        
-        try {
-            await runTransaction(db, async (transaction) => {
-                const docSnap = await transaction.get(gameStateDocRef);
-                if (!docSnap.exists()) {
-                    throw "Document does not exist!";
-                }
+        const currentLevel = gameState.upgrades[upgradeId] || 0;
+        const cost = calculateCost(upgrade, currentLevel);
 
-                const data = docSnap.data();
-                const serverLevel = data.upgrades[upgradeId] || 0;
-                const serverCost = calculateCost(upgrade, serverLevel);
-                
-                if (data.clicks >= serverCost) {
-                    transaction.update(gameStateDocRef, {
-                        clicks: increment(-serverCost),
-                        [`upgrades.${upgradeId}`]: increment(1)
-                    });
-                } else {
-                    console.log("Server state does not allow purchase. Rolling back local UI.");
-                    showMessageBox('Not enough energy to purchase!', 'bg-red-600');
-                    throw "Not enough clicks on server.";
-                }
-            });
-        } catch (e) {
-            console.error("Transaction failed: ", e);
-        }
-    };
-
-    const buyShopItem = async (itemId) => {
-        if (!isAuthReady) return;
-
-        const gameStateDocRef = doc(db, GAME_STATE_PATH, 'state');
-        const userDataDocRef = doc(db, USER_DATA_PATH, userId, 'user_data', 'data');
-        const item = shopItemsData.find(i => i.id === itemId);
-        
-        try {
-            await runTransaction(db, async (transaction) => {
-                const gameStateDocSnap = await transaction.get(gameStateDocRef);
-                const userDataDocSnap = await transaction.get(userDataDocRef);
-                
-                if (!gameStateDocSnap.exists() || !userDataDocSnap.exists()) {
-                    throw "Game or User document does not exist!";
-                }
-
-                const gameState = gameStateDocSnap.data();
-                const userData = userDataDocSnap.data();
-                
-                if (userData.personalClicks < item.cost) {
-                    showMessageBox('Not enough personal energy!', 'bg-red-600');
-                    throw "Not enough personal clicks to buy this item.";
-                }
-
-                if (item.type === 'global_buff') {
-                    const currentBoost = gameState.global_boost || 1;
-                    transaction.update(gameStateDocRef, {
-                        global_boost: (currentBoost * item.value)
-                    });
-                     transaction.update(userDataDocRef, { personalClicks: increment(-item.cost) });
-                } else if (item.type === 'chat_effect') {
-                    if (userData.chat_effects.includes(item.id)) {
-                        showMessageBox('You already own this item!', 'bg-yellow-600');
-                        throw "Item already owned.";
-                    }
-                    transaction.update(userDataDocRef, { 
-                        personalClicks: increment(-item.cost),
-                        chat_effects: [...(userData.chat_effects || []), item.id]
-                    });
-                    showMessageBox('Purchase successful!', 'bg-green-600');
-                }
-            });
-        } catch (e) {
-            console.error("Shop item purchase transaction failed: ", e);
+        if (gameState.clicks >= cost) {
+            gameState.clicks -= cost;
+            gameState.upgrades[upgradeId] = (gameState.upgrades[upgradeId] || 0) + 1;
+            gameState.cpc = calculateCpc();
+            gameState.cps = calculateCps();
+            updateUI();
+            await savePlayerState();
         }
     };
     
-    // --- Name & Chat Logic ---
-    saveNameButton.addEventListener('click', () => {
-        const newName = nameInput.value.trim();
-        if (newName) {
-            userName = newName;
-            localStorage.setItem('userName', userName);
-            nameModal.classList.add('hidden');
-        } else {
-            showMessageBox('Please enter a name.', 'bg-red-600');
+    // --- Supabase Data & Polling Functions ---
+    const loadPlayerState = async () => {
+        if (!userId) return;
+        const { data, error } = await supabase.from('players').select('*').eq('id', userId).single();
+        if (error && error.code === 'PGRST116') { // Record not found
+            console.log("New player, creating profile...");
+            await supabase.from('players').insert([{ id: userId, state: gameState }]);
+        } else if (data) {
+            gameState = data.state;
+            gameState.cps = calculateCps();
+            gameState.cpc = calculateCpc();
+        } else if (error) {
+            console.error('Error loading player state:', error.message);
         }
-    });
+    };
 
-    const showMessageBox = (message, colorClass) => {
-        messageBox.textContent = message;
-        messageBox.className = `fixed inset-x-0 bottom-4 text-center text-white p-3 rounded-xl mx-auto max-w-sm shadow-lg z-50 transition-transform duration-300 transform translate-y-full ${colorClass}`;
-        messageBox.classList.remove('hidden');
-        setTimeout(() => {
-            messageBox.style.transform = "translateY(0)";
-        }, 100);
-        setTimeout(() => {
-            messageBox.style.transform = "translateY(100%)";
-            setTimeout(() => messageBox.classList.add('hidden'), 300);
-        }, 3000);
+    const savePlayerState = async () => {
+        if (!userId) return;
+        const { error } = await supabase.from('players').update({ state: gameState }).eq('id', userId);
+        if (error) {
+            console.error('Error saving player state:', error.message);
+        }
+    };
+
+    const fetchAndUpdateGlobalState = async () => {
+        const { data, error } = await supabase.from('global_state').select('global_energy').single();
+        if (error) {
+            console.error('Error fetching global energy:', error.message);
+        } else {
+            globalState.global_energy = data.global_energy;
+            updateUI();
+        }
+    };
+
+    const updateGlobalEnergy = async (value) => {
+        // This will be handled by the click handler and CPS loop, which will update the database
+        const { data, error } = await supabase.from('global_state').select('*').single();
+        if (error && error.code === 'PGRST116') {
+             // If no record exists, create one with the initial value
+            await supabase.from('global_state').insert([{ id: 1, global_energy: value }]);
+        } else if (data) {
+            // Otherwise, update the existing record
+            const newEnergy = data.global_energy + value;
+            await supabase.from('global_state').update({ global_energy: newEnergy }).eq('id', 1);
+        } else if (error) {
+            console.error('Error updating global energy:', error.message);
+        }
+    };
+
+    // --- Chat Functions ---
+    const fetchAndUpdateChat = async () => {
+        const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(50);
+        if (error) {
+            console.error('Error fetching messages:', error.message);
+        } else {
+            renderMessages(data.reverse());
+        }
+    };
+
+    const renderMessages = (messages) => {
+        chatBox.innerHTML = '';
+        messages.forEach(message => {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'chat-message';
+            const sender = message.sender || 'Anonymous';
+            messageElement.innerHTML = `<span class="font-bold text-cyan-300">${sender.substring(0, 8)}...</span>: ${message.content}`;
+            chatBox.appendChild(messageElement);
+        });
     };
 
     const sendMessage = async () => {
-        const text = chatInput.value.trim();
-        if (text && userName) {
-            try {
-                const messageData = {
-                    userId: userId,
-                    userName: userName,
-                    text: text,
-                    timestamp: serverTimestamp(),
-                    chat_effect: localUserData.chat_effects.length > 0 ? localUserData.chat_effects[0] : null // Only send the first effect for now
-                };
-                await addDoc(collection(db, CHAT_ROOT_PATH, currentChannel, 'messages'), messageData);
-                chatInput.value = '';
-            } catch (e) {
-                console.error("Error adding message: ", e);
-            }
-        }
+        const content = chatInput.value.trim();
+        if (!content) return;
+
+        const { error } = await supabase.from('messages').insert([{
+            sender: userId,
+            content: content
+        }]);
+        
+        if (error) console.error('Error sending message:', error.message);
+        chatInput.value = '';
     };
 
+    // --- Event Listeners & Game Loop ---
+    clickButton.addEventListener('click', () => {
+        gameState.clicks += gameState.cpc;
+        updateUI();
+        updateGlobalEnergy(gameState.cpc);
+        savePlayerState();
+    });
+
     sendButton.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
+    chatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             sendMessage();
         }
     });
-    
-    // --- Emoji Modal Logic ---
-    const renderEmojis = () => {
-        emojiList.innerHTML = '';
-        Object.keys(emojis).forEach(key => {
-            const emojiButton = document.createElement('button');
-            emojiButton.className = 'w-10 h-10 p-1 rounded-full hover:bg-gray-700 transition-colors duration-200';
-            emojiButton.innerHTML = `<img src="${emojis[key]}" alt="${key}" class="w-full h-full">`;
-            emojiButton.addEventListener('click', () => {
-                chatInput.value += ` :${key}: `;
-                emojiModal.classList.add('hidden');
-                chatInput.focus();
-            });
-            emojiList.appendChild(emojiButton);
-        });
-    };
 
-    emojiButton.addEventListener('click', () => {
-        renderEmojis();
-        emojiModal.classList.remove('hidden');
-    });
-
-    closeEmojiModalButton.addEventListener('click', () => {
-        emojiModal.classList.add('hidden');
-    });
-
-    // --- Tab Switching Logic ---
-    const showTab = (tabName) => {
-        // Hide all tab content
-        Object.values(tabContents).forEach(content => content.classList.add('hidden'));
-
-        // Deactivate all buttons
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-
-        // Show the selected tab content and activate its button
-        const selectedContent = document.getElementById(`${tabName}-tab-content`);
-        if (selectedContent) {
-            selectedContent.classList.remove('hidden');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+    // CPS loop
+    setInterval(() => {
+        if (gameState.cps > 0) {
+            gameState.clicks += gameState.cps;
+            updateGlobalEnergy(gameState.cps);
+            updateUI();
+            savePlayerState();
         }
-    };
-    
-    upgradesTabBtn.addEventListener('click', () => showTab('upgrades'));
-    shopTabBtn.addEventListener('click', () => showTab('shop'));
-    showTab('upgrades'); // Start with upgrades tab open
+    }, 1000);
 
-    // --- Shops Toggle Logic ---
-    toggleShopsButton.addEventListener('click', () => {
-        if (shopsContainer.classList.contains('hidden')) {
-            shopsContainer.classList.remove('hidden');
-            toggleShopsButton.textContent = 'Collapse Shops';
-        } else {
-            shopsContainer.classList.add('hidden');
-            toggleShopsButton.textContent = 'Expand Shops';
-        }
-    });
-
-
-    // --- Channel Switching Logic ---
-    const setupChatListener = (channel) => {
-        // Unsubscribe from the previous channel listener if it exists
-        if (chatUnsubscribe) {
-            chatUnsubscribe();
-        }
-
-        const chatCollectionPath = `${CHAT_ROOT_PATH}/${channel}/messages`;
-        chatUnsubscribe = onSnapshot(collection(db, chatCollectionPath), (querySnapshot) => {
-            const messages = [];
-            querySnapshot.forEach((doc) => {
-                messages.push(doc.data());
-            });
-            messages.sort((a, b) => (a.timestamp ? a.timestamp.toDate() : 0) - (b.timestamp ? b.timestamp.toDate() : 0));
-            renderMessages(messages);
-        });
+    window.onload = () => {
+        initSupabase();
     };
 
-    const updateChannelButtons = () => {
-        channelButtons.forEach(button => {
-            if (button.id === `channel-${currentChannel}`) {
-                button.classList.add('active', 'bg-cyan-600', 'text-white');
-                button.classList.remove('bg-gray-700', 'text-gray-300');
-            } else {
-                button.classList.remove('active', 'bg-cyan-600', 'text-white');
-                button.classList.add('bg-gray-700', 'text-gray-300');
-            }
-        });
-    };
-
-    channelButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const channel = button.id.replace('channel-', '');
-            currentChannel = channel;
-            setupChatListener(currentChannel);
-            updateChannelButtons();
-        });
-    });
-
-    window.onload = initializeGame;
 </script>
-
 </body>
 </html>
