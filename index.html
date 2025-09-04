@@ -35,14 +35,14 @@
             background-color: #1f1f1f;
         }
         .message-bubble {
-            animation: fadeInUp 0.5s ease-out;
+            animation: message-fade-in-up 0.8s ease-out;
         }
         .message-input-container {
             display: flex;
             padding: 1rem;
             background-color: #1f1f1f;
         }
-        @keyframes fadeInUp {
+        @keyframes message-fade-in-up {
             from {
                 opacity: 0;
                 transform: translateY(20px);
@@ -52,20 +52,7 @@
                 transform: translateY(0);
             }
         }
-        /* Custom gradient border for Admin status */
-        .admin-border {
-            position: relative;
-            z-index: 1;
-        }
-        .admin-border::before {
-            content: '';
-            position: absolute;
-            inset: -2px; /* controls the border thickness */
-            border-radius: 0.75rem; /* Matches parent rounded-xl */
-            background: linear-gradient(to right, #B91C1C, #4A0404);
-            z-index: -1;
-        }
-        /* Custom gradient border for Member status */
+        /* Plain grey border for all messages */
         .member-border {
             position: relative;
             z-index: 1;
@@ -78,42 +65,29 @@
             background-color: #A0A0A0; /* Plain grey border */
             z-index: -1;
         }
-        /* Custom gradient border for Princess status */
-        .princess-border {
-            position: relative;
-            z-index: 1;
-        }
-        .princess-border::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: 0.75rem;
-            background: linear-gradient(to right, #FFC0CB, #FFB6C1);
-            z-index: -1;
-        }
-        /* Custom gradient border for Master status */
-        .master-border {
-            position: relative;
-            z-index: 1;
-        }
-        .master-border::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: 0.75rem;
-            background: linear-gradient(to right, #4ade80, #16a34a);
-            z-index: -1;
-        }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
 
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full transition-all duration-300 transform scale-95">
+            <h2 id="auth-title" class="text-2xl font-bold text-center mb-6 text-teal-400">Set Your Username</h2>
+            <form id="auth-form" class="space-y-4">
+                <input type="text" id="auth-username-input" placeholder="Username" class="w-full p-3 bg-gray-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" required />
+                <button type="submit" id="auth-submit-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition duration-200">Save</button>
+            </form>
+            <p id="auth-status" class="text-center text-sm text-gray-400 mt-4">Signing in...</p>
+        </div>
+    </div>
+    
     <!-- Main Chat Interface -->
-    <div class="chat-container bg-gray-900 rounded-xl shadow-2xl max-w-4xl mx-auto transition-shadow duration-300">
+    <div id="chat-app" class="chat-container bg-gray-900 rounded-xl shadow-2xl max-w-4xl mx-auto transition-shadow duration-300 hidden">
         
         <!-- Header -->
-        <div class="p-4 border-b border-gray-700">
-            <h1 class="text-2xl font-bold text-center text-teal-400">Online Global Chat</h1>
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
+            <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Logout</button>
         </div>
 
         <!-- Messages Display Area -->
@@ -127,13 +101,6 @@
                 Connecting...
             </div>
             
-            <!-- Nickname & Code Input -->
-            <div class="flex items-center space-x-2 mb-4">
-                <input type="text" id="nickname-input" placeholder="Set your nickname" class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" autocomplete="off" />
-                <button id="set-nickname-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Set</button>
-                <button id="code-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Enter Code</button>
-            </div>
-
             <!-- Message Input -->
             <div class="message-input-container space-x-2 rounded-xl">
                 <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-200" autocomplete="off" />
@@ -142,7 +109,7 @@
         </div>
     </div>
 
-    <!-- Custom Modal for Alerts & Code Input -->
+    <!-- Custom Modal for Alerts -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 transition-all duration-300">
         <div class="bg-gray-800 p-6 rounded-xl shadow-lg max-w-sm w-full border border-gray-700 transition-all duration-300">
             <div id="modal-content">
@@ -155,181 +122,113 @@
     </div>
 
     <script type="module">
-        // Import necessary Firebase functions from the CDN
+        // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Configuration ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
-          authDomain: "global-3c3db.firebaseapp.com",
-          projectId: "global-3c3db",
-          storageBucket: "global-3c3db.firebasestorage.app",
-          messagingSenderId: "580963150943",
-          appId: "1:580963150943:web:05649b5b9a8093547bffea",
-          measurementId: "G-64G0ZY3HD5"
-        };
-        const appId = "1:580963150943:web:05649b5b9a8093547bffea";
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // --- DOM Elements ---
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const nicknameInput = document.getElementById('nickname-input');
-        const setNicknameButton = document.getElementById('set-nickname-button');
-        const codeButton = document.getElementById('code-button');
         const userInfoDiv = document.getElementById('user-info');
-        const modal = document.getElementById('custom-modal');
-        const modalContent = document.getElementById('modal-content');
-        const modalMessage = document.getElementById('modal-message');
-        const modalCloseButton = document.getElementById('modal-close-button');
+        const customModal = document.getElementById('custom-modal');
+        const chatApp = document.getElementById('chat-app');
+        const authModal = document.getElementById('auth-modal');
+        const authTitle = document.getElementById('auth-title');
+        const authForm = document.getElementById('auth-form');
+        const authUsernameInput = document.getElementById('auth-username-input');
+        const authSubmitButton = document.getElementById('auth-submit-button');
+        const authStatus = document.getElementById('auth-status');
+        const logoutButton = document.getElementById('logout-button');
 
         // --- Firebase & User State ---
         let db, auth;
-        let userId;
-        let nickname = 'Member';
-        let isAdmin = false;
-        let isPrincess = false;
-        let isMaster = false;
+        let userId = null;
+        let username = 'Guest';
 
         // --- Modal Control Functions ---
-        const showModal = (message) => {
-            modalContent.innerHTML = `
-                <div class="text-white text-lg font-semibold mb-4">${message}</div>
-                <div class="flex justify-end">
-                    <button id="modal-close-button" class="bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl transition duration-200">OK</button>
-                </div>
-            `;
-            document.getElementById('modal-close-button').onclick = () => modal.classList.add('hidden');
-            modal.classList.remove('hidden');
-        };
-
-        const showCombinedCodeModal = () => {
-            modalContent.innerHTML = `
-                <div class="text-white text-lg font-semibold mb-4">Enter Admin, Princess or Master Code</div>
-                <input type="text" id="code-input" placeholder="Enter code..." class="w-full p-3 bg-gray-700 text-white rounded-xl focus:outline-none mb-4" autocomplete="off" />
-                <div class="flex justify-end space-x-2">
-                    <button id="cancel-button" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-xl transition duration-200">Cancel</button>
-                    <button id="submit-code-button" class="bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl transition duration-200">Submit</button>
-                </div>
-            `;
-            modal.classList.remove('hidden');
-            document.getElementById('cancel-button').onclick = () => modal.classList.add('hidden');
-            document.getElementById('submit-code-button').onclick = () => {
-                const codeInput = document.getElementById('code-input');
-                const code = codeInput.value.trim();
-                
-                // Reset all statuses before setting a new one
-                isAdmin = false;
-                isPrincess = false;
-                isMaster = false;
-                localStorage.removeItem('isAdmin');
-                localStorage.removeItem('isPrincess');
-                localStorage.removeItem('isMaster');
-
-                if (code === '1982') {
-                    isAdmin = true;
-                    localStorage.setItem('isAdmin', 'true');
-                    updateUserInfo();
-                    showModal("Success! You now have Admin status.");
-                } else if (code === '7869') {
-                    isPrincess = true;
-                    localStorage.setItem('isPrincess', 'true');
-                    updateUserInfo();
-                    showModal("Success! You now have Princess status.");
-                } else if (code === '6644') {
-                    isMaster = true;
-                    localStorage.setItem('isMaster', 'true');
-                    updateUserInfo();
-                    showModal("Success! You now have Master status.");
-                } else {
-                    updateUserInfo();
-                    showModal("Incorrect code. Please try again.");
-                }
-            };
+        const showModal = (message, title = "Info") => {
+            customModal.classList.remove('hidden');
+            customModal.querySelector('#modal-message').textContent = message;
+            customModal.querySelector('#modal-close-button').onclick = () => customModal.classList.add('hidden');
         };
 
         // --- Firebase & App Initialization ---
-        async function initFirebase() {
+        const initFirebase = () => {
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                await signInAnonymously(auth);
+                // Initial sign-in with custom token or anonymously
+                const signInWithToken = async () => {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Auth token sign-in failed:", error);
+                        authStatus.textContent = "Sign-in failed. Please refresh.";
+                    }
+                };
+                signInWithToken();
 
-                onAuthStateChanged(auth, (user) => {
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        loadState();
+                        // Setup message listener immediately
                         setupRealtimeListener();
+
+                        const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
+                        const userDocSnap = await getDoc(userDocRef);
+                        
+                        if (userDocSnap.exists()) {
+                            username = userDocSnap.data().username;
+                            authModal.classList.add('hidden');
+                            chatApp.classList.remove('hidden');
+                            updateUserInfo();
+                        } else {
+                            // New user: show username creation modal
+                            username = 'Guest';
+                            authModal.classList.remove('hidden');
+                            authTitle.textContent = "Welcome! Set your Username";
+                            authStatus.textContent = "Please choose a username to continue.";
+                            authForm.classList.remove('hidden');
+                            chatApp.classList.add('hidden');
+                        }
                     } else {
-                        showModal("Authentication failed. Please try again.");
+                        userId = null;
+                        username = 'Guest';
+                        updateUserInfo();
+                        chatApp.classList.add('hidden');
                     }
                 });
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                if (error.code === 'auth/configuration-not-found') {
-                    showModal("Authentication failed. Please make sure the 'Anonymous' sign-in provider is enabled in your Firebase console.");
-                } else {
-                    showModal("Could not connect to the database. Please check your connection.");
-                }
+                showModal("Could not connect to the database. Please check your connection.");
             }
-        }
-
-        // Load nickname and status from localStorage
-        const loadState = () => {
-            const storedNickname = localStorage.getItem('chatNickname');
-            if (storedNickname) {
-                nickname = storedNickname;
-                nicknameInput.value = nickname;
-            }
-            const storedAdmin = localStorage.getItem('isAdmin');
-            if (storedAdmin === 'true') {
-                isAdmin = true;
-            }
-            const storedPrincess = localStorage.getItem('isPrincess');
-            if (storedPrincess === 'true') {
-                isPrincess = true;
-            }
-            const storedMaster = localStorage.getItem('isMaster');
-            if (storedMaster === 'true') {
-                isMaster = true;
-            }
-            updateUserInfo();
         };
 
         // Update the user info display
         const updateUserInfo = () => {
-            let statusText = 'Member';
-            if (isAdmin) {
-                statusText = 'Admin';
-            } else if (isPrincess) {
-                statusText = 'Princess';
-            } else if (isMaster) {
-                statusText = 'Master';
-            }
-            userInfoDiv.textContent = `User ID: ${userId.substring(0, 8)}... | Nickname: ${nickname} | Status: ${statusText}`;
-        };
-
-        // Save nickname to localStorage
-        const setNickname = () => {
-            const newNickname = nicknameInput.value.trim();
-            if (newNickname) {
-                nickname = newNickname;
-                localStorage.setItem('chatNickname', newNickname);
-                updateUserInfo();
-                showModal(`Your nickname has been set to "${newNickname}".`);
+            if (userId) {
+                userInfoDiv.textContent = `Logged in as: ${username}`;
+            } else {
+                userInfoDiv.textContent = `Not logged in`;
             }
         };
 
         // Setup the real-time listener for chat messages
-        function setupRealtimeListener() {
-            if (!db || !userId) {
-                console.error("Database or User ID not available. Cannot set up listener.");
-                return;
-            }
+        const setupRealtimeListener = () => {
+            if (!db) return;
             const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
             const messagesRef = collection(db, collectionPath);
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
@@ -345,25 +244,11 @@
                         const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
                         const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
                         const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
-                        const displayName = isCurrentUser ? 'You' : (message.nickname || 'Member');
+                        const displayName = isCurrentUser ? 'You' : (message.username || 'Member');
                         
-                        let borderClass = '';
-                        let nicknameClass = 'font-bold text-white';
+                        const borderClass = 'member-border';
+                        const nicknameClass = 'font-bold text-white';
 
-                        if (message.isAdmin) {
-                            borderClass = 'admin-border';
-                            nicknameClass = 'font-bold text-red-400';
-                        } else if (message.isPrincess) {
-                            borderClass = 'princess-border';
-                            nicknameClass = 'font-bold text-pink-400';
-                        } else if (message.isMaster) {
-                            borderClass = 'master-border';
-                            nicknameClass = 'font-bold text-green-800';
-                        } else {
-                            borderClass = 'member-border';
-                            nicknameClass = 'font-bold text-white';
-                        }
-                        
                         messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
                         messageElement.innerHTML = `
                             <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
@@ -374,8 +259,6 @@
                             </div>
                         `;
                         messagesContainer.appendChild(messageElement);
-
-                        // Scroll to the bottom of the messages container
                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     }
                 });
@@ -383,7 +266,7 @@
                 console.error("Error fetching messages:", error);
                 showModal("Failed to load messages. Please refresh.");
             });
-        }
+        };
 
         // Function to send a message
         const sendMessage = async () => {
@@ -396,12 +279,9 @@
                 const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
                 await addDoc(collection(db, collectionPath), {
                     userId: userId,
-                    nickname: nickname,
+                    username: username,
                     text: messageText,
                     timestamp: serverTimestamp(),
-                    isAdmin: isAdmin,
-                    isPrincess: isPrincess,
-                    isMaster: isMaster
                 });
                 
                 messageInput.value = '';
@@ -411,20 +291,51 @@
             }
         };
 
-        // Event listeners for sending messages and setting nickname
+        // --- Auth Form Handlers ---
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newUsername = authUsernameInput.value.trim();
+
+            if (!newUsername) {
+                showModal("Please enter a username.");
+                return;
+            }
+            
+            try {
+                // Save the new username to the user's profile
+                const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
+                await setDoc(userDocRef, {
+                    username: newUsername,
+                    createdAt: serverTimestamp()
+                });
+                // Update local username state
+                username = newUsername;
+                
+                authModal.classList.add('hidden');
+                chatApp.classList.remove('hidden');
+                updateUserInfo();
+            } catch (error) {
+                console.error("Error saving username:", error);
+                showModal("Failed to save username. Please try again.");
+            }
+        });
+
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Logout error:", error);
+                showModal("Failed to log out.");
+            }
+        });
+
+        // Event listeners for sending messages
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
-        setNicknameButton.addEventListener('click', setNickname);
-        nicknameInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                setNickname();
-            }
-        });
-        codeButton.addEventListener('click', showCombinedCodeModal);
 
         // Start the application
         window.onload = () => {
