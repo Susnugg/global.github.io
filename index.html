@@ -16,7 +16,7 @@
         .chat-container {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 1rem); /* Adjust for full height */
+            height: calc(100vh - 1rem);
         }
         .chat-messages {
             flex-grow: 1;
@@ -61,6 +61,14 @@
             <div id="user-info" class="text-sm text-gray-400 mb-2">
                 Connecting...
             </div>
+            
+            <!-- Nickname Input -->
+            <div class="flex items-center space-x-2 mb-4">
+                <input type="text" id="nickname-input" placeholder="Set your nickname" class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" autocomplete="off" />
+                <button id="set-nickname-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Set</button>
+            </div>
+
+            <!-- Message Input -->
             <div class="message-input-container space-x-2 rounded-xl">
                 <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-200" autocomplete="off" />
                 <button id="send-button" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Send</button>
@@ -85,8 +93,6 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        // IMPORTANT: Replace the placeholders below with your actual Firebase project configuration.
-        // You can find this in your Firebase console under Project Settings.
         const firebaseConfig = {
           apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
           authDomain: "global-3c3db.firebaseapp.com",
@@ -96,20 +102,23 @@
           appId: "1:580963150943:web:05649b5b9a8093547bffea",
           measurementId: "G-64G0ZY3HD5"
         };
-        const appId = "1:580963150943:web:05649b5b9a8093547bffea"; // Use your App ID here for the Firestore path
+        const appId = "1:580963150943:web:05649b5b9a8093547bffea";
 
         // --- DOM Elements ---
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const nicknameInput = document.getElementById('nickname-input');
+        const setNicknameButton = document.getElementById('set-nickname-button');
         const userInfoDiv = document.getElementById('user-info');
         const modal = document.getElementById('custom-modal');
         const modalMessage = document.getElementById('modal-message');
         const modalCloseButton = document.getElementById('modal-close-button');
 
-        // --- Firebase Initialization ---
+        // --- Firebase & User State ---
         let db, auth;
         let userId;
+        let nickname = 'Guest';
 
         const showModal = (message) => {
             modalMessage.textContent = message;
@@ -119,25 +128,20 @@
         modalCloseButton.onclick = () => {
             modal.classList.add('hidden');
         };
-        
+
         // Asynchronous initialization function
         async function initFirebase() {
             try {
-                // Initialize Firebase app
                 const app = initializeApp(firebaseConfig);
-                
-                // Get Auth and Firestore services
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Sign in the user anonymously
                 await signInAnonymously(auth);
 
-                // Check for auth state changes to get the user ID
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        userInfoDiv.textContent = `User ID: ${userId}`;
+                        loadNickname();
                         setupRealtimeListener();
                     } else {
                         showModal("Authentication failed. Please try again.");
@@ -145,7 +149,6 @@
                 });
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                // Provide a more specific error message to the user
                 if (error.code === 'auth/configuration-not-found') {
                     showModal("Authentication failed. Please make sure the 'Anonymous' sign-in provider is enabled in your Firebase console.");
                 } else {
@@ -154,25 +157,39 @@
             }
         }
 
+        // Load nickname from localStorage
+        const loadNickname = () => {
+            const storedNickname = localStorage.getItem('chatNickname');
+            if (storedNickname) {
+                nickname = storedNickname;
+                nicknameInput.value = nickname;
+            }
+            userInfoDiv.textContent = `User ID: ${userId.substring(0, 8)}... | Nickname: ${nickname}`;
+        };
+
+        // Save nickname to localStorage
+        const setNickname = () => {
+            const newNickname = nicknameInput.value.trim();
+            if (newNickname) {
+                nickname = newNickname;
+                localStorage.setItem('chatNickname', newNickname);
+                userInfoDiv.textContent = `User ID: ${userId.substring(0, 8)}... | Nickname: ${nickname}`;
+                showModal(`Your nickname has been set to "${newNickname}".`);
+            }
+        };
+
         // Setup the real-time listener for chat messages
         function setupRealtimeListener() {
             if (!db || !userId) {
                 console.error("Database or User ID not available. Cannot set up listener.");
                 return;
             }
-
-            // Public collection path for global chat
             const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
             const messagesRef = collection(db, collectionPath);
-            // Query to order messages by timestamp in ascending order
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
 
-            // Listen for real-time updates
             onSnapshot(messagesQuery, (snapshot) => {
-                // Clear the current messages
                 messagesContainer.innerHTML = '';
-                
-                // Process each document (message) and display it
                 snapshot.forEach(doc => {
                     const message = doc.data();
                     const messageElement = document.createElement('div');
@@ -182,20 +199,19 @@
                     const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
                     const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
                     const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
+                    const displayName = isCurrentUser ? 'You' : (message.nickname || message.userId.substring(0, 8));
 
                     messageElement.className = `flex ${flexAlignment} mb-2`;
                     messageElement.innerHTML = `
                         <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} break-words shadow-md">
                             <span class="font-bold text-xs text-gray-400 block mb-1">
-                                ${message.userId === userId ? 'You' : message.userId.substring(0, 8)}
+                                ${displayName}
                             </span>
                             ${message.text}
                         </div>
                     `;
                     messagesContainer.appendChild(messageElement);
                 });
-
-                // Scroll to the bottom of the messages container
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, (error) => {
                 console.error("Error fetching messages:", error);
@@ -211,15 +227,14 @@
             }
 
             try {
-                // Add a new document to the messages collection
                 const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
                 await addDoc(collection(db, collectionPath), {
                     userId: userId,
+                    nickname: nickname,
                     text: messageText,
                     timestamp: serverTimestamp()
                 });
                 
-                // Clear the input field
                 messageInput.value = '';
             } catch (e) {
                 console.error("Error adding document: ", e);
@@ -227,11 +242,17 @@
             }
         };
 
-        // Event listeners for sending messages
+        // Event listeners for sending messages and setting nickname
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            }
+        });
+        setNicknameButton.addEventListener('click', setNickname);
+        nicknameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                setNickname();
             }
         });
 
