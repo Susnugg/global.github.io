@@ -146,6 +146,19 @@
         </div>
     </div>
 
+    <!-- Members Modal -->
+    <div id="members-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300 hidden">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full transition-all duration-300 transform scale-95">
+            <h2 class="text-2xl font-bold text-center mb-6 text-orange-400">Group Members</h2>
+            <div id="group-members-list" class="space-y-4 max-h-60 overflow-y-auto mb-6">
+                <!-- Members will be listed here -->
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="close-members-modal" class="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-xl transition duration-200">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Modal for Alerts -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 transition-all duration-300">
         <div class="bg-gray-800 p-6 rounded-xl shadow-lg max-w-sm w-full border border-gray-700 transition-all duration-300">
@@ -162,7 +175,7 @@
         // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc, where, updateDoc, arrayUnion, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- IMPORTANT: INSERT YOUR FIREBASE CONFIG HERE ---
         // Step 1: Go to your Firebase Console > Project Settings.
@@ -196,6 +209,12 @@
         const logoutButton = document.getElementById('logout-button');
         const chatHeader = document.getElementById('chat-header');
         const groupsButton = document.getElementById('groups-button');
+        const membersButton = document.createElement('button');
+        membersButton.id = 'members-button';
+        membersButton.className = 'bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200 ml-2 hidden';
+        membersButton.textContent = 'Members';
+        document.querySelector('.flex.space-x-2').prepend(membersButton);
+
         const groupsModal = document.getElementById('groups-modal');
         const closeGroupsModalButton = document.getElementById('close-groups-modal');
         const createGroupButton = document.getElementById('create-group-button');
@@ -205,6 +224,9 @@
         const joinGroupCodeInput = document.getElementById('join-group-code');
         const submitJoinGroupButton = document.getElementById('submit-join-group');
         const userGroupsList = document.getElementById('user-groups-list');
+        const membersModal = document.getElementById('members-modal');
+        const closeMembersModalButton = document.getElementById('close-members-modal');
+        const groupMembersList = document.getElementById('group-members-list');
 
         // --- Firebase & User State ---
         let db, auth;
@@ -213,6 +235,7 @@
         let currentChatMode = 'global'; // 'global', 'private' or 'group'
         let currentChatId = null; // Holds the privateChatPartnerId or groupId
         let currentChatName = null;
+        let currentGroupCreatorId = null;
         let unsubscribe = null; // Variable to hold the unsubscribe function
 
         // --- Modal Control Functions ---
@@ -303,17 +326,19 @@
             currentChatMode = 'private';
             currentChatId = getDmId(userId, targetUserId);
             currentChatName = `DM with: ${targetUsername}`;
-            updateChatHeader();
+            currentGroupCreatorId = null;
             messagesContainer.innerHTML = '';
+            updateChatHeader();
             setupRealtimeListener();
         };
 
-        const startGroupChat = (groupId, groupName) => {
+        const startGroupChat = (groupId, groupName, creatorId) => {
             currentChatMode = 'group';
             currentChatId = groupId;
             currentChatName = `Group: ${groupName}`;
-            updateChatHeader();
+            currentGroupCreatorId = creatorId;
             messagesContainer.innerHTML = '';
+            updateChatHeader();
             setupRealtimeListener();
         };
 
@@ -329,10 +354,17 @@
                     currentChatMode = 'global';
                     currentChatId = null;
                     currentChatName = null;
-                    updateChatHeader();
+                    currentGroupCreatorId = null;
                     messagesContainer.innerHTML = '';
+                    updateChatHeader();
                     setupRealtimeListener();
                 });
+            }
+
+            if (currentChatMode === 'group') {
+                membersButton.classList.remove('hidden');
+            } else {
+                membersButton.classList.add('hidden');
             }
         };
 
@@ -364,8 +396,6 @@
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
 
             unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-                // We no longer clear the container here.
-                // We only process the new messages, which is much more efficient.
                 snapshot.docChanges().forEach(change => {
                     if (change.type === "added") {
                         const message = change.doc.data();
@@ -466,7 +496,7 @@
 
                 showModal(`Group "${groupName}" created! Share this join code: ${joinCode}`);
                 groupsModal.classList.add('hidden');
-                startGroupChat(newGroupRef.id, groupName);
+                startGroupChat(newGroupRef.id, groupName, userId);
             } catch (e) {
                 console.error("Error creating group:", e);
                 showModal("Failed to create group. Please try again.");
@@ -497,7 +527,7 @@
                 if (members.includes(userId)) {
                     showModal(`You are already a member of "${groupData.name}".`);
                     groupsModal.classList.add('hidden');
-                    startGroupChat(groupId, groupData.name);
+                    startGroupChat(groupId, groupData.name, groupData.creatorId);
                     return;
                 }
 
@@ -508,7 +538,7 @@
                 
                 showModal(`You have joined the group "${groupData.name}"!`);
                 groupsModal.classList.add('hidden');
-                startGroupChat(groupId, groupData.name);
+                startGroupChat(groupId, groupData.name, groupData.creatorId);
 
             } catch (e) {
                 console.error("Error joining group:", e);
@@ -531,7 +561,7 @@
                     groupElement.className = "p-3 bg-gray-700 rounded-xl cursor-pointer hover:bg-gray-600 transition-colors";
                     groupElement.textContent = group.name;
                     groupElement.addEventListener('click', () => {
-                        startGroupChat(doc.id, group.name);
+                        startGroupChat(doc.id, group.name, group.creatorId);
                         groupsModal.classList.add('hidden');
                     });
                     userGroupsList.appendChild(groupElement);
@@ -540,6 +570,76 @@
                 console.error("Error fetching groups:", error);
             });
         };
+
+        const showMembersModal = async () => {
+            if (!currentChatId || currentChatMode !== 'group') {
+                showModal("This feature is only available for group chats.");
+                return;
+            }
+
+            groupMembersList.innerHTML = 'Loading members...';
+            membersModal.classList.remove('hidden');
+
+            try {
+                const groupDocRef = doc(db, `/artifacts/${appId}/group_chats/${currentChatId}`);
+                const groupDocSnap = await getDoc(groupDocRef);
+                
+                if (!groupDocSnap.exists()) {
+                    showModal("Group not found.");
+                    return;
+                }
+                
+                const groupData = groupDocSnap.data();
+                const members = groupData.members || [];
+                groupMembersList.innerHTML = '';
+
+                for (const memberId of members) {
+                    const memberDocRef = doc(db, `/artifacts/${appId}/users/${memberId}/profile/info`);
+                    const memberDocSnap = await getDoc(memberDocRef);
+                    const memberUsername = memberDocSnap.exists() ? memberDocSnap.data().username : 'Unknown User';
+
+                    const memberElement = document.createElement('div');
+                    memberElement.className = 'flex justify-between items-center p-3 bg-gray-700 rounded-xl';
+                    
+                    const memberNameSpan = document.createElement('span');
+                    memberNameSpan.textContent = memberUsername;
+                    memberElement.appendChild(memberNameSpan);
+
+                    // Add a remove button for the group creator
+                    if (userId === groupData.creatorId && memberId !== userId) {
+                        const removeButton = document.createElement('button');
+                        removeButton.textContent = 'Remove';
+                        removeButton.className = 'bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-xl transition duration-200';
+                        removeButton.onclick = () => removeMember(memberId, memberUsername, groupData.name);
+                        memberElement.appendChild(removeButton);
+                    }
+                    groupMembersList.appendChild(memberElement);
+                }
+
+            } catch (e) {
+                console.error("Error fetching members:", e);
+                showModal("Failed to load members list.");
+            }
+        };
+
+        const removeMember = async (memberId, memberUsername, groupName) => {
+            const confirmed = confirm(`Are you sure you want to remove ${memberUsername} from ${groupName}?`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const groupDocRef = doc(db, `/artifacts/${appId}/group_chats/${currentChatId}`);
+                await updateDoc(groupDocRef, {
+                    members: arrayRemove(memberId)
+                });
+                showModal(`${memberUsername} has been removed from the group.`);
+            } catch (e) {
+                console.error("Error removing member:", e);
+                showModal(`Failed to remove ${memberUsername}. Please ensure you are the group's creator.`);
+            }
+        };
+
 
         // --- Event Listeners ---
         groupsButton.addEventListener('click', () => {
@@ -559,6 +659,11 @@
         });
         submitCreateGroupButton.addEventListener('click', createGroup);
         submitJoinGroupButton.addEventListener('click', joinGroup);
+
+        membersButton.addEventListener('click', showMembersModal);
+        closeMembersModalButton.addEventListener('click', () => {
+            membersModal.classList.add('hidden');
+        });
 
         // --- Auth Form Handlers ---
         authForm.addEventListener('submit', async (e) => {
