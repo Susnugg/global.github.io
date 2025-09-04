@@ -124,13 +124,24 @@
     <script type="module">
         // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- IMPORTANT: INSERT YOUR FIREBASE CONFIG HERE ---
+        // Step 1: Go to your Firebase Console > Project Settings.
+        // Step 2: Under "Your apps," select the "Web" app (or create one).
+        // Step 3: Copy the 'firebaseConfig' object and paste it below.
+        // DO NOT PASTE THE __firebase_config VARIABLE HERE.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
+            authDomain: "global-3c3db.firebaseapp.com",
+            projectId: "global-3c3db",
+            storageBucket: "global-3c3db.firebasestorage.app",
+            messagingSenderId: "580963150943",
+            appId: "1:580963150943:web:05649b5b9a8093547bffea",
+            measurementId: "G-64G0ZY3HD5"
+        };
+        const appId = firebaseConfig.appId;
 
         // --- DOM Elements ---
         const messagesContainer = document.getElementById('messages-container');
@@ -205,13 +216,9 @@
                     }
                 });
                 
-                // Initial sign-in with custom token or anonymously
+                // Initial sign-in with anonymous auth
                 try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Authentication failed:", error);
                     showModal(`Authentication failed. Please check your network or refresh the page. (Error: ${error.code})`);
@@ -219,7 +226,7 @@
 
             } catch (error) {
                 console.error("Error initializing Firebase services:", error);
-                showModal("Could not connect to the database. Please check your connection and refresh the page.");
+                showModal("Could not connect to the database. Please check your configuration and refresh the page.");
             }
         };
 
