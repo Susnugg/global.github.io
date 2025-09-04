@@ -65,6 +65,45 @@
             background: linear-gradient(to right, #B91C1C, #4A0404);
             z-index: -1;
         }
+        /* Custom gradient border for Member status */
+        .member-border {
+            position: relative;
+            z-index: 1;
+        }
+        .member-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 0.75rem;
+            background-color: #A0A0A0; /* Plain grey border */
+            z-index: -1;
+        }
+        /* Custom gradient border for Princess status */
+        .princess-border {
+            position: relative;
+            z-index: 1;
+        }
+        .princess-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 0.75rem;
+            background: linear-gradient(to right, #FFC0CB, #FFB6C1);
+            z-index: -1;
+        }
+        /* Custom gradient border for Master status */
+        .master-border {
+            position: relative;
+            z-index: 1;
+        }
+        .master-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 0.75rem;
+            background: linear-gradient(to right, #4ade80, #16a34a);
+            z-index: -1;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
@@ -92,7 +131,7 @@
             <div class="flex items-center space-x-2 mb-4">
                 <input type="text" id="nickname-input" placeholder="Set your nickname" class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" autocomplete="off" />
                 <button id="set-nickname-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Set</button>
-                <button id="admin-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Enter Code</button>
+                <button id="code-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Enter Code</button>
             </div>
 
             <!-- Message Input -->
@@ -139,7 +178,7 @@
         const sendButton = document.getElementById('send-button');
         const nicknameInput = document.getElementById('nickname-input');
         const setNicknameButton = document.getElementById('set-nickname-button');
-        const adminButton = document.getElementById('admin-button');
+        const codeButton = document.getElementById('code-button');
         const userInfoDiv = document.getElementById('user-info');
         const modal = document.getElementById('custom-modal');
         const modalContent = document.getElementById('modal-content');
@@ -149,8 +188,10 @@
         // --- Firebase & User State ---
         let db, auth;
         let userId;
-        let nickname = 'Guest';
+        let nickname = 'Member';
         let isAdmin = false;
+        let isPrincess = false;
+        let isMaster = false;
 
         // --- Modal Control Functions ---
         const showModal = (message) => {
@@ -164,25 +205,46 @@
             modal.classList.remove('hidden');
         };
 
-        const showCodeModal = () => {
+        const showCombinedCodeModal = () => {
             modalContent.innerHTML = `
-                <div class="text-white text-lg font-semibold mb-4">Enter Admin Code</div>
+                <div class="text-white text-lg font-semibold mb-4">Enter Admin, Princess or Master Code</div>
                 <input type="text" id="code-input" placeholder="Enter code..." class="w-full p-3 bg-gray-700 text-white rounded-xl focus:outline-none mb-4" autocomplete="off" />
                 <div class="flex justify-end space-x-2">
                     <button id="cancel-button" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-xl transition duration-200">Cancel</button>
-                    <button id="submit-code-button" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-xl transition duration-200">Submit</button>
+                    <button id="submit-code-button" class="bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl transition duration-200">Submit</button>
                 </div>
             `;
             modal.classList.remove('hidden');
             document.getElementById('cancel-button').onclick = () => modal.classList.add('hidden');
             document.getElementById('submit-code-button').onclick = () => {
                 const codeInput = document.getElementById('code-input');
-                if (codeInput.value === '1982') {
+                const code = codeInput.value.trim();
+                
+                // Reset all statuses before setting a new one
+                isAdmin = false;
+                isPrincess = false;
+                isMaster = false;
+                localStorage.removeItem('isAdmin');
+                localStorage.removeItem('isPrincess');
+                localStorage.removeItem('isMaster');
+
+                if (code === '1982') {
                     isAdmin = true;
                     localStorage.setItem('isAdmin', 'true');
                     updateUserInfo();
-                    showModal("Success! You now have a fancy Admin border.");
+                    showModal("Success! You now have Admin status.");
+                } else if (code === '7869') {
+                    isPrincess = true;
+                    localStorage.setItem('isPrincess', 'true');
+                    updateUserInfo();
+                    showModal("Success! You now have Princess status.");
+                } else if (code === '6644') {
+                    isMaster = true;
+                    localStorage.setItem('isMaster', 'true');
+                    updateUserInfo();
+                    showModal("Success! You now have Master status.");
                 } else {
+                    updateUserInfo();
                     showModal("Incorrect code. Please try again.");
                 }
             };
@@ -216,7 +278,7 @@
             }
         }
 
-        // Load nickname and Admin status from localStorage
+        // Load nickname and status from localStorage
         const loadState = () => {
             const storedNickname = localStorage.getItem('chatNickname');
             if (storedNickname) {
@@ -227,12 +289,27 @@
             if (storedAdmin === 'true') {
                 isAdmin = true;
             }
+            const storedPrincess = localStorage.getItem('isPrincess');
+            if (storedPrincess === 'true') {
+                isPrincess = true;
+            }
+            const storedMaster = localStorage.getItem('isMaster');
+            if (storedMaster === 'true') {
+                isMaster = true;
+            }
             updateUserInfo();
         };
 
         // Update the user info display
         const updateUserInfo = () => {
-            let statusText = isAdmin ? 'Admin' : 'Guest';
+            let statusText = 'Member';
+            if (isAdmin) {
+                statusText = 'Admin';
+            } else if (isPrincess) {
+                statusText = 'Princess';
+            } else if (isMaster) {
+                statusText = 'Master';
+            }
             userInfoDiv.textContent = `User ID: ${userId.substring(0, 8)}... | Nickname: ${nickname} | Status: ${statusText}`;
         };
 
@@ -268,17 +345,32 @@
                         const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
                         const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
                         const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
-                        const displayName = isCurrentUser ? 'You' : (message.nickname || 'Guest');
-                        const adminBorder = message.isAdmin ? 'admin-border' : '';
-                        const nicknameClass = message.isAdmin ? 'font-bold text-red-400' : 'font-bold text-gray-400';
+                        const displayName = isCurrentUser ? 'You' : (message.nickname || 'Member');
+                        
+                        let borderClass = '';
+                        let nicknameClass = 'font-bold text-white';
 
+                        if (message.isAdmin) {
+                            borderClass = 'admin-border';
+                            nicknameClass = 'font-bold text-red-400';
+                        } else if (message.isPrincess) {
+                            borderClass = 'princess-border';
+                            nicknameClass = 'font-bold text-pink-400';
+                        } else if (message.isMaster) {
+                            borderClass = 'master-border';
+                            nicknameClass = 'font-bold text-green-800';
+                        } else {
+                            borderClass = 'member-border';
+                            nicknameClass = 'font-bold text-white';
+                        }
+                        
                         messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
                         messageElement.innerHTML = `
-                            <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${adminBorder} break-words shadow-md transition-all duration-300">
+                            <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
                                 <span class="text-xs block mb-1 ${nicknameClass}">
                                     ${displayName}
                                 </span>
-                                ${message.text}
+                                <span>${message.text}</span>
                             </div>
                         `;
                         messagesContainer.appendChild(messageElement);
@@ -307,7 +399,9 @@
                     nickname: nickname,
                     text: messageText,
                     timestamp: serverTimestamp(),
-                    isAdmin: isAdmin
+                    isAdmin: isAdmin,
+                    isPrincess: isPrincess,
+                    isMaster: isMaster
                 });
                 
                 messageInput.value = '';
@@ -330,7 +424,7 @@
                 setNickname();
             }
         });
-        adminButton.addEventListener('click', showCodeModal);
+        codeButton.addEventListener('click', showCombinedCodeModal);
 
         // Start the application
         window.onload = () => {
