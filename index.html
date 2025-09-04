@@ -81,14 +81,22 @@
     <script type="module">
         // Import necessary Firebase functions from the CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Global Variables ---
-        // These variables are provided by the canvas environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- Firebase Configuration ---
+        // IMPORTANT: Replace the placeholders below with your actual Firebase project configuration.
+        // You can find this in your Firebase console under Project Settings.
+        const firebaseConfig = {
+          apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
+          authDomain: "global-3c3db.firebaseapp.com",
+          projectId: "global-3c3db",
+          storageBucket: "global-3c3db.firebasestorage.app",
+          messagingSenderId: "580963150943",
+          appId: "1:580963150943:web:05649b5b9a8093547bffea",
+          measurementId: "G-64G0ZY3HD5"
+        };
+        const appId = "1:580963150943:web:05649b5b9a8093547bffea"; // Use your App ID here for the Firestore path
 
         // --- DOM Elements ---
         const messagesContainer = document.getElementById('messages-container');
@@ -122,12 +130,8 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Sign in the user with a custom token or anonymously
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Sign in the user anonymously
+                await signInAnonymously(auth);
 
                 // Check for auth state changes to get the user ID
                 onAuthStateChanged(auth, (user) => {
@@ -141,7 +145,12 @@
                 });
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                showModal("Could not connect to the database. Please check your connection.");
+                // Provide a more specific error message to the user
+                if (error.code === 'auth/configuration-not-found') {
+                    showModal("Authentication failed. Please make sure the 'Anonymous' sign-in provider is enabled in your Firebase console.");
+                } else {
+                    showModal("Could not connect to the database. Please check your connection.");
+                }
             }
         }
 
