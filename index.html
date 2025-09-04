@@ -174,7 +174,7 @@
     <script type="module">
         // Import necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Use the global variables provided by the environment
@@ -188,6 +188,7 @@
             measurementId: "G-64G0ZY3HD5"
         };
         const appId = firebaseConfig.projectId;
+        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         setLogLevel('debug'); // Enable debug logging for Firestore
 
@@ -289,9 +290,9 @@
                     }
                 });
                 
-                // Initial sign-in with anonymous authentication
+                // Initial sign-in with the custom token or anonymously
                 try {
-                     await signInAnonymously(auth);
+                    await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Authentication failed:", error);
                     showModal(`Authentication failed. Please check your network or refresh the page. (Error: ${error.code})`);
@@ -385,7 +386,7 @@
             } else if (currentChatMode === 'private') {
                 collectionPath = `/artifacts/${appId}/private_dms/${currentChatId}/messages`;
             } else if (currentChatMode === 'group') {
-                collectionPath = `/artifacts/${appId}/group_chats/${currentChatId}/messages`;
+                collectionPath = `/artifacts/${appId}/public/data/group_chats/${currentChatId}/messages`;
             } else {
                 return; // Should not happen
             }
@@ -453,7 +454,7 @@
                 } else if (currentChatMode === 'private') {
                     collectionPath = `/artifacts/${appId}/private_dms/${currentChatId}/messages`;
                 } else if (currentChatMode === 'group') {
-                    collectionPath = `/artifacts/${appId}/group_chats/${currentChatId}/messages`;
+                    collectionPath = `/artifacts/${appId}/public/data/group_chats/${currentChatId}/messages`;
                 } else {
                     return; // Should not happen
                 }
@@ -484,7 +485,7 @@
             }
             try {
                 const joinCode = generateJoinCode();
-                const newGroupRef = await addDoc(collection(db, `/artifacts/${appId}/group_chats`), {
+                const newGroupRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/group_chats`), {
                     name: groupName,
                     creatorId: userId,
                     joinCode: joinCode,
@@ -508,7 +509,7 @@
                 return;
             }
             try {
-                const groupsRef = collection(db, `/artifacts/${appId}/group_chats`);
+                const groupsRef = collection(db, `/artifacts/${appId}/public/data/group_chats`);
                 const q = query(groupsRef, where("joinCode", "==", joinCode));
                 const querySnapshot = await getDocs(q);
 
@@ -530,7 +531,7 @@
                 }
 
                 // Add user to the members array
-                await updateDoc(doc(db, `/artifacts/${appId}/group_chats/${groupId}`), {
+                await updateDoc(doc(db, `/artifacts/${appId}/public/data/group_chats/${groupId}`), {
                     members: arrayUnion(userId)
                 });
                 
@@ -548,7 +549,7 @@
             if (unsubscribe) {
                 unsubscribe();
             }
-            const groupsRef = collection(db, `/artifacts/${appId}/group_chats`);
+            const groupsRef = collection(db, `/artifacts/${appId}/public/data/group_chats`);
             const q = query(groupsRef, where("members", "array-contains", userId));
 
             unsubscribe = onSnapshot(q, (snapshot) => {
@@ -579,7 +580,7 @@
             membersModal.classList.remove('hidden');
 
             try {
-                const groupDocRef = doc(db, `/artifacts/${appId}/group_chats/${currentChatId}`);
+                const groupDocRef = doc(db, `/artifacts/${appId}/public/data/group_chats/${currentChatId}`);
                 const groupDocSnap = await getDoc(groupDocRef);
                 
                 if (!groupDocSnap.exists()) {
@@ -624,7 +625,7 @@
             showModal(`Removing ${memberUsername} from ${groupName}...`);
 
             try {
-                const groupDocRef = doc(db, `/artifacts/${appId}/group_chats/${currentChatId}`);
+                const groupDocRef = doc(db, `/artifacts/${appId}/public/data/group_chats/${currentChatId}`);
                 await updateDoc(groupDocRef, {
                     members: arrayRemove(memberId)
                 });
