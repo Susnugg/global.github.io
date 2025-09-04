@@ -86,7 +86,7 @@
         
         <!-- Header -->
         <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
+            <h1 id="chat-header" class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
             <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Logout</button>
         </div>
 
@@ -157,11 +157,16 @@
         const authSubmitButton = document.getElementById('auth-submit-button');
         const authStatus = document.getElementById('auth-status');
         const logoutButton = document.getElementById('logout-button');
+        const chatHeader = document.getElementById('chat-header');
 
         // --- Firebase & User State ---
         let db, auth;
         let userId = null;
         let username = 'Guest';
+        let currentChatMode = 'global'; // 'global' or 'private'
+        let privateChatPartnerId = null;
+        let privateChatPartnerUsername = null;
+        let unsubscribe = null; // Variable to hold the unsubscribe function
 
         // --- Modal Control Functions ---
         const showModal = (message) => {
@@ -239,48 +244,109 @@
             }
         };
 
+        const getDmId = (user1Id, user2Id) => {
+            return user1Id < user2Id ? `${user1Id}_${user2Id}` : `${user2Id}_${user1Id}`;
+        };
+
+        const startPrivateChat = (targetUserId, targetUsername) => {
+            if (targetUserId === userId) {
+                showModal("You cannot DM yourself.");
+                return;
+            }
+            currentChatMode = 'private';
+            privateChatPartnerId = targetUserId;
+            privateChatPartnerUsername = targetUsername;
+            chatHeader.innerHTML = `
+                DM with: ${targetUsername}
+                <button id="back-to-global-button" class="bg-gray-600 hover:bg-gray-700 text-white text-sm py-1 px-3 ml-4 rounded-xl transition duration-200">
+                    Back to Global Chat
+                </button>
+            `;
+            messagesContainer.innerHTML = '';
+            setupRealtimeListener();
+            document.getElementById('back-to-global-button').addEventListener('click', () => {
+                currentChatMode = 'global';
+                privateChatPartnerId = null;
+                privateChatPartnerUsername = null;
+                chatHeader.innerHTML = "Online Global Chat";
+                messagesContainer.innerHTML = '';
+                setupRealtimeListener();
+            });
+        };
+
         // Setup the real-time listener for chat messages
         const setupRealtimeListener = () => {
+            // Unsubscribe from any previous listener
+            if (unsubscribe) {
+                unsubscribe();
+            }
+
             if (!db) {
                 console.error("Firestore DB not initialized. Cannot set up listener.");
                 return;
             }
-            const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
+            
+            let collectionPath;
+            if (currentChatMode === 'global') {
+                collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
+            } else {
+                const dmId = getDmId(userId, privateChatPartnerId);
+                collectionPath = `/artifacts/${appId}/private_dms/${dmId}/messages`;
+            }
+            
             const messagesRef = collection(db, collectionPath);
             const messagesQuery = query(messagesRef, orderBy('timestamp'));
 
-            onSnapshot(messagesQuery, (snapshot) => {
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === "added") {
-                        const message = change.doc.data();
-                        const messageElement = document.createElement('div');
-                        
-                        const isCurrentUser = message.userId === userId;
-                        const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
-                        const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
-                        const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
-                        const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
-                        const displayName = isCurrentUser ? 'You' : (message.username || 'Member');
-                        
-                        const borderClass = 'member-border';
-                        const nicknameClass = 'font-bold text-white';
+            unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+                // Clear the container on new snapshot to prevent duplicates
+                messagesContainer.innerHTML = '';
 
-                        messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
-                        messageElement.innerHTML = `
-                            <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
-                                <span class="text-xs block mb-1 ${nicknameClass}">
-                                    ${displayName}
-                                </span>
-                                <span>${message.text}</span>
-                            </div>
-                        `;
-                        messagesContainer.appendChild(messageElement);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
+                let messages = [];
+                snapshot.forEach(doc => messages.push(doc.data()));
+                
+                // Sort messages by timestamp
+                messages.sort((a, b) => a.timestamp - b.timestamp);
+
+                messages.forEach(message => {
+                    const messageElement = document.createElement('div');
+                    
+                    const isCurrentUser = message.userId === userId;
+                    const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
+                    const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
+                    const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
+                    const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
+                    const displayName = isCurrentUser ? 'You' : (message.username || 'Member');
+                    
+                    const borderClass = 'member-border';
+                    const nicknameClass = 'font-bold text-white cursor-pointer';
+
+                    messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
+                    messageElement.innerHTML = `
+                        <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
+                            <span class="text-xs block mb-1 ${nicknameClass}"
+                                data-user-id="${message.userId}"
+                                data-username="${message.username}">
+                                ${displayName}
+                            </span>
+                            <span>${message.text}</span>
+                        </div>
+                    `;
+                    messagesContainer.appendChild(messageElement);
                 });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                document.querySelectorAll('.message-bubble span.font-bold').forEach(element => {
+                    element.addEventListener('click', (event) => {
+                        const targetUserId = event.target.dataset.userId;
+                        const targetUsername = event.target.dataset.username;
+                        startPrivateChat(targetUserId, targetUsername);
+                    });
+                });
+
             }, (error) => {
                 console.error("Error fetching messages:", error);
-                showModal("Failed to load messages. Please refresh.");
+                // The error is most likely due to permission issues.
+                showModal(`Failed to load messages due to insufficient permissions. Please check your Firestore security rules. Error: ${error.message}`);
             });
         };
 
@@ -292,7 +358,14 @@
             }
 
             try {
-                const collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
+                let collectionPath;
+                if (currentChatMode === 'global') {
+                    collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
+                } else {
+                    const dmId = getDmId(userId, privateChatPartnerId);
+                    collectionPath = `/artifacts/${appId}/private_dms/${dmId}/messages`;
+                }
+
                 await addDoc(collection(db, collectionPath), {
                     userId: userId,
                     username: username,
