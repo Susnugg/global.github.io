@@ -384,55 +384,62 @@
             if (currentChatMode === 'global') {
                 collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
             } else if (currentChatMode === 'private') {
-                collectionPath = `/artifacts/${appId}/private_dms/${currentChatId}/messages`;
+                collectionPath = `/artifacts/${appId}/public/data/private_dms/${currentChatId}/messages`;
             } else if (currentChatMode === 'group') {
                 collectionPath = `/artifacts/${appId}/public/data/group_chats/${currentChatId}/messages`;
             } else {
                 return; // Should not happen
             }
-            
+            console.log("Listening to collection:", collectionPath);
+
             const messagesRef = collection(db, collectionPath);
-            const messagesQuery = query(messagesRef, orderBy('timestamp'));
+            // Removed orderBy('timestamp') to avoid potential index-related permission issues
+            const messagesQuery = query(messagesRef);
 
             unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === "added") {
-                        const message = change.doc.data();
-                        const messageElement = document.createElement('div');
-                        
-                        const isCurrentUser = message.userId === userId;
-                        const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
-                        const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
-                        const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
-                        const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
-                        const displayName = isCurrentUser ? 'You' : (message.username || 'Member');
-                        
-                        const borderClass = 'member-border';
-                        const nicknameClass = 'font-bold text-white cursor-pointer';
+                // Clear the container before re-rendering
+                messagesContainer.innerHTML = '';
+                
+                // Sort documents by timestamp in JavaScript
+                const sortedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => a.timestamp - b.timestamp);
 
-                        messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
-                        messageElement.innerHTML = `
-                            <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
-                                <span class="text-xs block mb-1 ${nicknameClass}"
-                                    data-user-id="${message.userId}"
-                                    data-username="${message.username}">
-                                    ${displayName}
-                                </span>
-                                <span>${message.text}</span>
-                            </div>
-                        `;
-                        messagesContainer.appendChild(messageElement);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                sortedMessages.forEach(message => {
+                    const messageElement = document.createElement('div');
+                        
+                    const isCurrentUser = message.userId === userId;
+                    const alignmentClass = isCurrentUser ? 'ml-auto' : 'mr-auto';
+                    const bubbleColor = isCurrentUser ? 'bg-teal-700' : 'bg-gray-700';
+                    const textColor = isCurrentUser ? 'text-white' : 'text-gray-200';
+                    const flexAlignment = isCurrentUser ? 'justify-end' : 'justify-start';
+                    const displayName = isCurrentUser ? 'You' : (message.username || 'Member');
+                    
+                    const borderClass = 'member-border';
+                    const nicknameClass = 'font-bold text-white cursor-pointer';
 
-                        // Add event listener to the newly created element
-                        messageElement.querySelector('span.font-bold').addEventListener('click', (event) => {
-                            const targetUserId = event.target.dataset.userId;
-                            const targetUsername = event.target.dataset.username;
-                            startPrivateChat(targetUserId, targetUsername);
-                        });
-                    }
+                    messageElement.className = `flex ${flexAlignment} mb-2 message-bubble animate-fadeInUp`;
+                    messageElement.innerHTML = `
+                        <div class="p-3 max-w-[80%] rounded-xl ${alignmentClass} ${bubbleColor} ${textColor} ${borderClass} break-words shadow-md transition-all duration-300">
+                            <span class="text-xs block mb-1 ${nicknameClass}"
+                                data-user-id="${message.userId}"
+                                data-username="${message.username}">
+                                ${displayName}
+                            </span>
+                            <span>${message.text}</span>
+                        </div>
+                    `;
+                    messagesContainer.appendChild(messageElement);
                 });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
+                // Add event listener to the nickname of each message
+                messagesContainer.querySelectorAll('span.font-bold').forEach(nicknameEl => {
+                    nicknameEl.addEventListener('click', (event) => {
+                        const targetUserId = event.target.dataset.userId;
+                        const targetUsername = event.target.dataset.username;
+                        startPrivateChat(targetUserId, targetUsername);
+                    });
+                });
             }, (error) => {
                 console.error("Error fetching messages:", error);
                 // The error is most likely due to permission issues.
@@ -452,7 +459,7 @@
                 if (currentChatMode === 'global') {
                     collectionPath = `/artifacts/${appId}/public/data/chat_messages`;
                 } else if (currentChatMode === 'private') {
-                    collectionPath = `/artifacts/${appId}/private_dms/${currentChatId}/messages`;
+                    collectionPath = `/artifacts/${appId}/public/data/private_dms/${currentChatId}/messages`;
                 } else if (currentChatMode === 'group') {
                     collectionPath = `/artifacts/${appId}/public/data/group_chats/${currentChatId}/messages`;
                 } else {
