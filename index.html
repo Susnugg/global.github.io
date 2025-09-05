@@ -12,11 +12,68 @@
             font-family: 'Inter', sans-serif;
             background-color: #121212;
             color: #E0E0E0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
         }
-        .chat-container {
+        .main-container {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 1rem);
+            width: 100%;
+            max-width: 1200px;
+            height: calc(100vh - 2rem);
+            gap: 1rem;
+        }
+        @media (min-width: 1024px) {
+            .main-container {
+                flex-direction: row;
+            }
+        }
+        .chat-container {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        .changelog-container {
+            flex: 1;
+            background-color: #1f1f1f;
+            border-radius: 1rem;
+            transition: all 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        .changelog-content {
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            overflow-y: auto;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+        }
+        .changelog-content.open {
+            max-height: 100%;
+            opacity: 1;
+        }
+        .changelog-header-btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background-color: #2a2a2a;
+            color: #E0E0E0;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .changelog-header-btn:hover {
+            background-color: #333;
+        }
+        .changelog-arrow {
+            transition: transform 0.3s ease-in-out;
+        }
+        .changelog-arrow.open {
+            transform: rotate(180deg);
         }
         .chat-messages {
             flex-grow: 1;
@@ -81,33 +138,50 @@
         </div>
     </div>
     
-    <!-- Main Chat Interface -->
-    <div id="chat-app" class="chat-container bg-gray-900 rounded-xl shadow-2xl max-w-4xl mx-auto transition-shadow duration-300 hidden">
+    <!-- Main Chat and Changelog Container -->
+    <div id="main-container" class="main-container rounded-xl shadow-2xl transition-shadow duration-300 hidden">
         
-        <!-- Header -->
-        <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-            <h1 id="chat-header" class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
-            <div class="flex space-x-2">
-                <button id="groups-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">My Groups</button>
-                <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Logout</button>
-            </div>
-        </div>
-
-        <!-- Messages Display Area -->
-        <div id="messages-container" class="chat-messages p-4 space-y-4">
-            <!-- Messages will be injected here by JavaScript -->
-        </div>
-
-        <!-- User Info & Input Area -->
-        <div class="p-4 border-t border-gray-700 bg-gray-900">
-            <div id="user-info" class="text-sm text-gray-400 mb-2">
-                Connecting...
-            </div>
+        <!-- Chat Interface -->
+        <div id="chat-app" class="chat-container bg-gray-900 rounded-xl">
             
-            <!-- Message Input -->
-            <div class="message-input-container space-x-2 rounded-xl">
-                <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-200" autocomplete="off" />
-                <button id="send-button" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Send</button>
+            <!-- Header -->
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h1 id="chat-header" class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
+                <div class="flex space-x-2">
+                    <button id="groups-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">My Groups</button>
+                    <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Logout</button>
+                </div>
+            </div>
+
+            <!-- Messages Display Area -->
+            <div id="messages-container" class="chat-messages p-4 space-y-4">
+                <!-- Messages will be injected here by JavaScript -->
+            </div>
+
+            <!-- User Info & Input Area -->
+            <div class="p-4 border-t border-gray-700 bg-gray-900">
+                <div id="user-info" class="text-sm text-gray-400 mb-2">
+                    Connecting...
+                </div>
+                
+                <!-- Message Input -->
+                <div class="message-input-container space-x-2 rounded-xl">
+                    <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition duration-200" autocomplete="off" />
+                    <button id="send-button" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-xl transition duration-200">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Changelog -->
+        <div id="changelog-container" class="changelog-container">
+            <div id="changelog-header" class="changelog-header-btn">
+                <h2 class="text-xl font-bold text-purple-400">Changelog</h2>
+                <svg id="changelog-arrow" class="w-6 h-6 ml-2 text-purple-400 changelog-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            <div id="changelog-content" class="changelog-content">
+                <!-- Changelog content will be injected here -->
             </div>
         </div>
     </div>
@@ -194,6 +268,7 @@
         setLogLevel('debug'); // Enable debug logging for Firestore
 
         // --- DOM Elements ---
+        const mainContainer = document.getElementById('main-container');
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
@@ -234,7 +309,25 @@
         const groupMembersList = document.getElementById('group-members-list');
         const modalCancelButton = document.getElementById('modal-cancel-button');
         const modalCloseButton = document.getElementById('modal-close-button');
+        const changelogHeader = document.getElementById('changelog-header');
+        const changelogContentDiv = document.getElementById('changelog-content');
+        const changelogArrow = document.getElementById('changelog-arrow');
 
+
+        // --- Changelog Content ---
+        const CHANGELOG = `
+            <div class="space-y-4">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-md">
+                    <h3 class="text-lg font-bold text-teal-300">v1.1</h3>
+                    <ul class="list-disc list-inside mt-2 text-gray-300 space-y-1">
+                        <li>Fixed Firestore permission errors.</li>
+                        <li>Added real-time changelog.</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+
+        changelogContentDiv.innerHTML = CHANGELOG;
 
         // --- Firebase & User State ---
         let db, auth;
@@ -285,16 +378,16 @@
                             if (userDocSnap.exists()) {
                                 username = userDocSnap.data().username;
                                 authModal.classList.add('hidden');
-                                chatApp.classList.remove('hidden');
+                                mainContainer.classList.remove('hidden');
                                 updateUserInfo();
                             } else {
                                 // New user: show username creation modal
                                 username = 'Guest';
                                 authModal.classList.remove('hidden');
-                                authTitle.textContent = "Welcome! Set your Username";
+                                authTitle.textContent = "Welcome! Set Your Username";
                                 authStatus.textContent = "Please choose a username to continue.";
                                 authForm.classList.remove('hidden');
-                                chatApp.classList.remove('hidden'); // Show chat app while they create a username
+                                mainContainer.classList.remove('hidden');
                                 updateUserInfo();
                             }
                         } catch (error) {
@@ -305,7 +398,7 @@
                         userId = null;
                         username = 'Guest';
                         updateUserInfo();
-                        chatApp.classList.add('hidden');
+                        mainContainer.classList.add('hidden');
                     }
                 });
                 
@@ -714,6 +807,11 @@
             }
         };
 
+        const toggleChangelog = () => {
+            changelogContentDiv.classList.toggle('open');
+            changelogArrow.classList.toggle('open');
+        };
+
 
         // --- Event Listeners ---
         groupsButton.addEventListener('click', () => {
@@ -740,6 +838,8 @@
             membersModal.classList.add('hidden');
         });
 
+        changelogHeader.addEventListener('click', toggleChangelog);
+
         // --- Auth Form Handlers ---
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -765,7 +865,7 @@
                 username = newUsername;
                 
                 authModal.classList.add('hidden');
-                chatApp.classList.remove('hidden');
+                mainContainer.classList.remove('hidden');
                 updateUserInfo();
             } catch (error) {
                 console.error("Error saving username:", error);
