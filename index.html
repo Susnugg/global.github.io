@@ -617,7 +617,8 @@
                     setupRealtimeListener();
                 } catch (e) {
                     console.error("Error deleting group:", e);
-                    showModal("Failed to delete group. Please try again.");
+                    let errorMessage = "Failed to delete group. This is likely due to insufficient Firestore security rules. Please ensure your rules allow you to delete both the group document and all documents within its 'messages' subcollection.";
+                    showModal(errorMessage);
                 }
             }, true); // The 'true' parameter enables the cancel button
         };
