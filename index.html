@@ -368,7 +368,11 @@
                 
                 // Initial sign-in with the custom token or anonymously
                 try {
-                    await signInAnonymously(auth);
+                    if (authToken) {
+                        await signInWithCustomToken(auth, authToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
                 } catch (error) {
                     console.error("Authentication failed:", error);
                     showModal(`Authentication failed. Please check your network or refresh the page. (Error: ${error.code})`);
@@ -457,8 +461,8 @@
                 unsubscribe();
             }
 
-            if (!db) {
-                console.error("Firestore DB not initialized. Cannot set up listener.");
+            if (!db || !userId) {
+                console.log("DB or user not ready, skipping message listener setup.");
                 return;
             }
             
@@ -526,6 +530,37 @@
                 console.error("Error fetching messages:", error);
                 // The error is most likely due to permission issues.
                 showModal(`Failed to load messages due to insufficient permissions. Please check your Firestore security rules. Error: ${error.message}`);
+            });
+        };
+
+        const setupChangelogListener = () => {
+            if (changelogUnsubscribe) {
+                changelogUnsubscribe();
+            }
+
+            if (!db) {
+                console.log("DB not ready, skipping changelog listener setup.");
+                return;
+            }
+
+            const changelogRef = collection(db, `/artifacts/${appId}/public/data/changelog`);
+            const q = query(changelogRef);
+            changelogUnsubscribe = onSnapshot(q, (snapshot) => {
+                changelogList.innerHTML = '';
+                const sortedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => b.timestamp - a.timestamp); // Sort descending
+
+                sortedLogs.forEach(log => {
+                    const logElement = document.createElement('div');
+                    logElement.className = "p-3 bg-gray-700 rounded-xl mb-2 text-sm";
+                    const formattedDate = log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'Just now';
+                    logElement.innerHTML = `<span class="font-bold">${log.username}:</span> ${log.text}<br><span class="text-xs text-gray-400">${formattedDate}</span>`;
+                    changelogList.appendChild(logElement);
+                });
+            }, (error) => {
+                console.error("Error fetching changelog:", error);
+                // Similar to the chat, this is likely a permission issue.
+                showModal(`Failed to load changelog due to insufficient permissions. Please check your Firestore security rules. Error: ${error.message}`);
             });
         };
 
@@ -744,130 +779,41 @@
                         const removeButton = document.createElement('button');
                         removeButton.textContent = 'Remove';
                         removeButton.className = 'bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-xl transition duration-200';
-                        removeButton.onclick = () => removeMember(memberId, memberUsername, groupData.name);
+                        removeButton.onclick = () => removeGroupMember(memberId, memberUsername);
                         memberElement.appendChild(removeButton);
                     }
                     groupMembersList.appendChild(memberElement);
                 }
-
             } catch (e) {
-                console.error("Error fetching members:", e);
-                showModal("Failed to load members list.");
+                console.error("Error fetching group members:", e);
+                showModal("Failed to load group members. Please try again.");
             }
         };
 
-        const removeMember = async (memberId, memberUsername, groupName) => {
-            showModal(`Removing ${memberUsername} from ${groupName}...`);
-
-            try {
-                const groupDocRef = doc(db, `/artifacts/${appId}/public/data/group_chats/${currentChatId}`);
-                await updateDoc(groupDocRef, {
-                    members: arrayRemove(memberId)
-                });
-                showModal(`${memberUsername} has been removed from the group.`);
-            } catch (e) {
-                console.error("Error removing member:", e);
-                showModal(`Failed to remove ${memberUsername}. Please ensure you are the group's creator.`);
-            }
-        };
-
-        // --- Changelog Functions ---
-        const setupChangelogListener = () => {
-            if (changelogUnsubscribe) {
-                changelogUnsubscribe();
-            }
-            if (!db) return;
-
-            const changelogRef = collection(db, `/artifacts/${appId}/public/data/changelog`);
-            const q = query(changelogRef);
-
-            changelogUnsubscribe = onSnapshot(q, (snapshot) => {
-                changelogList.innerHTML = '';
-                const sortedEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-                    .sort((a, b) => b.timestamp - a.timestamp);
-
-                sortedEntries.forEach(entry => {
-                    const entryDate = entry.timestamp ? new Date(entry.timestamp.toDate()).toLocaleDateString() : 'No date';
-                    const entryElement = document.createElement('div');
-                    entryElement.className = "p-4 bg-gray-700 rounded-xl shadow-md";
-                    entryElement.innerHTML = `
-                        <div class="text-sm text-gray-400 mb-1">${entryDate}</div>
-                        <p class="text-white">${entry.text}</p>
-                    `;
-                    changelogList.appendChild(entryElement);
-                });
-            }, (error) => {
-                console.error("Error fetching changelog:", error);
-                showModal("Failed to load changelog due to insufficient permissions. Please check your Firestore security rules.");
-            });
-        };
-
-        const addChangelogEntry = async () => {
-            const entryText = changelogInput.value.trim();
-            if (!entryText) return;
-            try {
-                await addDoc(collection(db, `/artifacts/${appId}/public/data/changelog`), {
-                    text: entryText,
-                    timestamp: serverTimestamp()
-                });
-                changelogInput.value = '';
-            } catch (e) {
-                console.error("Error adding changelog entry:", e);
-                showModal("Failed to add changelog entry. Check your security rules.");
-            }
+        const removeGroupMember = async (memberId, memberUsername) => {
+            showModal(`Are you sure you want to remove ${memberUsername} from the group?`, async () => {
+                try {
+                    await updateDoc(doc(db, `/artifacts/${appId}/public/data/group_chats/${currentChatId}`), {
+                        members: arrayRemove(memberId)
+                    });
+                    showModal(`${memberUsername} has been removed.`);
+                    showMembersModal(); // Refresh the members list
+                } catch (e) {
+                    console.error("Error removing member:", e);
+                    showModal("Failed to remove member. This is likely due to insufficient permissions. Please check your security rules.");
+                }
+            }, true);
         };
 
         // --- Event Listeners ---
-        groupsButton.addEventListener('click', () => {
-            groupsModal.classList.remove('hidden');
-            setupGroupListener();
-        });
-        closeGroupsModalButton.addEventListener('click', () => {
-            groupsModal.classList.add('hidden');
-            if (unsubscribe) {
-                unsubscribe();
-            }
-            // Resubscribe to the current chat (global, private, or group)
-            setupRealtimeListener();
-        });
-        createGroupButton.addEventListener('click', () => {
-            createGroupSection.classList.toggle('hidden');
-        });
-        submitCreateGroupButton.addEventListener('click', createGroup);
-        submitJoinGroupButton.addEventListener('click', joinGroup);
-        deleteGroupButton.addEventListener('click', deleteGroup);
-
-        membersButton.addEventListener('click', showMembersModal);
-        closeMembersModalButton.addEventListener('click', () => {
-            membersModal.classList.add('hidden');
-        });
-
-        // Toggle Changelog Sidebar
-        changelogButton.addEventListener('click', () => {
-            changelogSidebar.classList.toggle('visible');
-        });
-        addChangelogButton.addEventListener('click', addChangelogEntry);
-        changelogInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                addChangelogEntry();
-            }
-        });
-
-        // --- Auth Form Handlers ---
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newUsername = authUsernameInput.value.trim();
-
-            if (!newUsername) {
-                showModal("Please enter a username.");
+            if (newUsername === "") {
+                showModal("Username cannot be empty.");
                 return;
             }
-            
             try {
-                if (!db || !userId) {
-                    showModal("Database not ready. Please wait a moment and try again.");
-                    return;
-                }
                 // Save the new username to the user's profile
                 const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
                 await setDoc(userDocRef, {
@@ -895,13 +841,57 @@
             }
         });
 
-        // Event listeners for sending messages
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
+
+        changelogButton.addEventListener('click', () => {
+            changelogSidebar.classList.toggle('visible');
+        });
+
+        addChangelogButton.addEventListener('click', async () => {
+            const entryText = changelogInput.value.trim();
+            if (entryText === "" || !db || !userId) {
+                return;
+            }
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/changelog`), {
+                    text: entryText,
+                    username: username,
+                    timestamp: serverTimestamp(),
+                });
+                changelogInput.value = '';
+            } catch (e) {
+                console.error("Error adding changelog entry: ", e);
+                showModal("Failed to add changelog entry. Check your permissions.");
+            }
+        });
+
+        groupsButton.addEventListener('click', () => {
+            groupsModal.classList.remove('hidden');
+            setupGroupListener();
+        });
+
+        closeGroupsModalButton.addEventListener('click', () => {
+            groupsModal.classList.add('hidden');
+        });
+
+        createGroupButton.addEventListener('click', () => {
+            createGroupSection.classList.toggle('hidden');
+        });
+
+        submitCreateGroupButton.addEventListener('click', createGroup);
+        submitJoinGroupButton.addEventListener('click', joinGroup);
+
+        membersButton.addEventListener('click', showMembersModal);
+        closeMembersModalButton.addEventListener('click', () => {
+            membersModal.classList.add('hidden');
+        });
+
+        deleteGroupButton.addEventListener('click', deleteGroup);
 
         // Start the application
         window.onload = () => {
