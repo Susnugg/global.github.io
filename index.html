@@ -12,68 +12,17 @@
             font-family: 'Inter', sans-serif;
             background-color: #121212;
             color: #E0E0E0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 1rem;
         }
-        .main-container {
+        .main-content {
             display: flex;
-            flex-direction: column;
-            width: 100%;
-            max-width: 1200px;
-            height: calc(100vh - 2rem);
+            height: calc(100vh - 1rem);
             gap: 1rem;
         }
-        @media (min-width: 1024px) {
-            .main-container {
-                flex-direction: row;
-            }
-        }
         .chat-container {
-            flex: 2;
             display: flex;
             flex-direction: column;
-        }
-        .changelog-container {
-            flex: 1;
-            background-color: #1f1f1f;
-            border-radius: 1rem;
-            transition: all 0.3s ease-in-out;
-            display: flex;
-            flex-direction: column;
-        }
-        .changelog-content {
-            padding: 0 1.5rem 1.5rem 1.5rem;
-            overflow-y: auto;
-            max-height: 0;
-            opacity: 0;
-            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
-        }
-        .changelog-content.open {
-            max-height: 100%;
-            opacity: 1;
-        }
-        .changelog-header-btn {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            background-color: #2a2a2a;
-            color: #E0E0E0;
-            border-radius: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .changelog-header-btn:hover {
-            background-color: #333;
-        }
-        .changelog-arrow {
-            transition: transform 0.3s ease-in-out;
-        }
-        .changelog-arrow.open {
-            transform: rotate(180deg);
+            flex-grow: 1;
+            transition: width 0.3s ease-in-out;
         }
         .chat-messages {
             flex-grow: 1;
@@ -98,6 +47,26 @@
             display: flex;
             padding: 1rem;
             background-color: #1f1f1f;
+        }
+        .changelog-sidebar {
+            width: 0;
+            overflow: hidden;
+            transition: width 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            background-color: #1f1f1f;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+        }
+        .changelog-sidebar.visible {
+            width: 30%;
+            padding: 1rem;
+        }
+        .changelog-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #4a4a4a #1f1f1f;
         }
         @keyframes message-fade-in-up {
             from {
@@ -138,16 +107,16 @@
         </div>
     </div>
     
-    <!-- Main Chat and Changelog Container -->
-    <div id="main-container" class="main-container rounded-xl shadow-2xl transition-shadow duration-300 hidden">
-        
-        <!-- Chat Interface -->
-        <div id="chat-app" class="chat-container bg-gray-900 rounded-xl">
+    <!-- Main Content Area with Chat and Changelog -->
+    <div id="main-content-area" class="main-content rounded-xl shadow-2xl max-w-6xl mx-auto transition-shadow duration-300 hidden">
+        <!-- Main Chat Interface -->
+        <div id="chat-app" class="chat-container bg-gray-900">
             
             <!-- Header -->
             <div class="p-4 border-b border-gray-700 flex justify-between items-center">
                 <h1 id="chat-header" class="text-2xl font-bold text-teal-400">Online Global Chat</h1>
                 <div class="flex space-x-2">
+                    <button id="changelog-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Changelog</button>
                     <button id="groups-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">My Groups</button>
                     <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-200">Logout</button>
                 </div>
@@ -172,19 +141,22 @@
             </div>
         </div>
 
-        <!-- Changelog -->
-        <div id="changelog-container" class="changelog-container">
-            <div id="changelog-header" class="changelog-header-btn">
+        <!-- Changelog Sidebar -->
+        <div id="changelog-sidebar" class="changelog-sidebar">
+            <div class="p-4 border-b border-gray-700">
                 <h2 class="text-xl font-bold text-purple-400">Changelog</h2>
-                <svg id="changelog-arrow" class="w-6 h-6 ml-2 text-purple-400 changelog-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
             </div>
-            <div id="changelog-content" class="changelog-content">
-                <!-- Changelog content will be injected here -->
+            <div id="changelog-list" class="changelog-content p-4 space-y-4">
+                <!-- Changelog entries will be injected here -->
+            </div>
+            <!-- Changelog Input & Button Container -->
+            <div id="changelog-input-container" class="p-4 border-t border-gray-700 bg-gray-900 hidden">
+                <input type="text" id="changelog-input" placeholder="Add a new entry..." class="w-full p-3 bg-gray-800 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" autocomplete="off" />
+                <button id="add-changelog-button" class="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition duration-200">Add Entry</button>
             </div>
         </div>
     </div>
+
 
     <!-- Groups Modal -->
     <div id="groups-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300 hidden">
@@ -253,22 +225,14 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs, setLogLevel, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Use the global variables provided by the environment
-        const firebaseConfig = {
-            apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
-            authDomain: "global-3c3db.firebaseapp.com",
-            projectId: "global-3c3db",
-            storageBucket: "global-3c3db.firebasestorage.app",
-            messagingSenderId: "580963150943",
-            appId: "1:580963150943:web:05649b5b9a8093547bffea",
-            measurementId: "G-64G0ZY3HD5"
-        };
-        const appId = firebaseConfig.projectId;
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         setLogLevel('debug'); // Enable debug logging for Firestore
 
         // --- DOM Elements ---
-        const mainContainer = document.getElementById('main-container');
+        const mainContentArea = document.getElementById('main-content-area');
         const messagesContainer = document.getElementById('messages-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
@@ -295,6 +259,13 @@
         document.querySelector('.flex.space-x-2').prepend(deleteGroupButton);
         document.querySelector('.flex.space-x-2').prepend(membersButton);
 
+        const changelogButton = document.getElementById('changelog-button');
+        const changelogSidebar = document.getElementById('changelog-sidebar');
+        const changelogList = document.getElementById('changelog-list');
+        const changelogInput = document.getElementById('changelog-input');
+        const addChangelogButton = document.getElementById('add-changelog-button');
+        const changelogInputContainer = document.getElementById('changelog-input-container');
+
         const groupsModal = document.getElementById('groups-modal');
         const closeGroupsModalButton = document.getElementById('close-groups-modal');
         const createGroupButton = document.getElementById('create-group-button');
@@ -309,25 +280,7 @@
         const groupMembersList = document.getElementById('group-members-list');
         const modalCancelButton = document.getElementById('modal-cancel-button');
         const modalCloseButton = document.getElementById('modal-close-button');
-        const changelogHeader = document.getElementById('changelog-header');
-        const changelogContentDiv = document.getElementById('changelog-content');
-        const changelogArrow = document.getElementById('changelog-arrow');
 
-
-        // --- Changelog Content ---
-        const CHANGELOG = `
-            <div class="space-y-4">
-                <div class="bg-gray-800 p-4 rounded-xl shadow-md">
-                    <h3 class="text-lg font-bold text-teal-300">v1.1</h3>
-                    <ul class="list-disc list-inside mt-2 text-gray-300 space-y-1">
-                        <li>Fixed Firestore permission errors.</li>
-                        <li>Added real-time changelog.</li>
-                    </ul>
-                </div>
-            </div>
-        `;
-
-        changelogContentDiv.innerHTML = CHANGELOG;
 
         // --- Firebase & User State ---
         let db, auth;
@@ -338,6 +291,7 @@
         let currentChatName = null;
         let currentGroupCreatorId = null;
         let unsubscribe = null; // Variable to hold the unsubscribe function
+        let changelogUnsubscribe = null;
 
         // --- Modal Control Functions ---
         const showModal = (message, onConfirm, showCancel = false) => {
@@ -369,6 +323,7 @@
                         userId = user.uid;
                         // Setup message listener immediately
                         setupRealtimeListener();
+                        setupChangelogListener();
                         
                         // Check if user profile exists
                         const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}/profile/info`);
@@ -378,16 +333,25 @@
                             if (userDocSnap.exists()) {
                                 username = userDocSnap.data().username;
                                 authModal.classList.add('hidden');
-                                mainContainer.classList.remove('hidden');
+                                mainContentArea.classList.remove('hidden');
                                 updateUserInfo();
+                                
+                                // Check if user can edit changelog and show/hide the input container
+                                console.log('Checking username:', username, 'for changelog permissions.');
+                                if (username && username.toLowerCase() === 'susnugg') {
+                                    changelogInputContainer.classList.remove('hidden');
+                                } else {
+                                    changelogInputContainer.classList.add('hidden');
+                                }
+                                
                             } else {
                                 // New user: show username creation modal
                                 username = 'Guest';
                                 authModal.classList.remove('hidden');
-                                authTitle.textContent = "Welcome! Set Your Username";
+                                authTitle.textContent = "Welcome! Set your Username";
                                 authStatus.textContent = "Please choose a username to continue.";
                                 authForm.classList.remove('hidden');
-                                mainContainer.classList.remove('hidden');
+                                mainContentArea.classList.remove('hidden'); // Show app while they create a username
                                 updateUserInfo();
                             }
                         } catch (error) {
@@ -398,7 +362,7 @@
                         userId = null;
                         username = 'Guest';
                         updateUserInfo();
-                        mainContainer.classList.add('hidden');
+                        mainContentArea.classList.add('hidden');
                     }
                 });
                 
@@ -807,11 +771,51 @@
             }
         };
 
-        const toggleChangelog = () => {
-            changelogContentDiv.classList.toggle('open');
-            changelogArrow.classList.toggle('open');
+        // --- Changelog Functions ---
+        const setupChangelogListener = () => {
+            if (changelogUnsubscribe) {
+                changelogUnsubscribe();
+            }
+            if (!db) return;
+
+            const changelogRef = collection(db, `/artifacts/${appId}/public/data/changelog`);
+            const q = query(changelogRef);
+
+            changelogUnsubscribe = onSnapshot(q, (snapshot) => {
+                changelogList.innerHTML = '';
+                const sortedEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+
+                sortedEntries.forEach(entry => {
+                    const entryDate = entry.timestamp ? new Date(entry.timestamp.toDate()).toLocaleDateString() : 'No date';
+                    const entryElement = document.createElement('div');
+                    entryElement.className = "p-4 bg-gray-700 rounded-xl shadow-md";
+                    entryElement.innerHTML = `
+                        <div class="text-sm text-gray-400 mb-1">${entryDate}</div>
+                        <p class="text-white">${entry.text}</p>
+                    `;
+                    changelogList.appendChild(entryElement);
+                });
+            }, (error) => {
+                console.error("Error fetching changelog:", error);
+                showModal("Failed to load changelog due to insufficient permissions. Please check your Firestore security rules.");
+            });
         };
 
+        const addChangelogEntry = async () => {
+            const entryText = changelogInput.value.trim();
+            if (!entryText) return;
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/changelog`), {
+                    text: entryText,
+                    timestamp: serverTimestamp()
+                });
+                changelogInput.value = '';
+            } catch (e) {
+                console.error("Error adding changelog entry:", e);
+                showModal("Failed to add changelog entry. Check your security rules.");
+            }
+        };
 
         // --- Event Listeners ---
         groupsButton.addEventListener('click', () => {
@@ -838,7 +842,16 @@
             membersModal.classList.add('hidden');
         });
 
-        changelogHeader.addEventListener('click', toggleChangelog);
+        // Toggle Changelog Sidebar
+        changelogButton.addEventListener('click', () => {
+            changelogSidebar.classList.toggle('visible');
+        });
+        addChangelogButton.addEventListener('click', addChangelogEntry);
+        changelogInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                addChangelogEntry();
+            }
+        });
 
         // --- Auth Form Handlers ---
         authForm.addEventListener('submit', async (e) => {
@@ -865,7 +878,7 @@
                 username = newUsername;
                 
                 authModal.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
+                mainContentArea.classList.remove('hidden');
                 updateUserInfo();
             } catch (error) {
                 console.error("Error saving username:", error);
