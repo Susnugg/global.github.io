@@ -224,10 +224,27 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, getDoc, doc, setDoc, where, updateDoc, arrayUnion, arrayRemove, getDocs, setLogLevel, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Use the global variables provided by the environment
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- 1. PASTE YOUR FIREBASE CONFIG HERE ---
+        // Replace this entire line with your firebaseConfig object.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAdaiTARImKp7wuKrgUPAQLhEzbp0s5E8",
+            authDomain: "global-3c3db.firebaseapp.com",
+            projectId: "global-3c3db",
+            storageBucket: "global-3c3db.firebasestorage.app",
+            messagingSenderId: "580963150943",
+            appId: "1:580963150943:web:05649b5b9a8093547bffea",
+            measurementId: "G-64G0ZY3HD5"
+        };
+        
+        // --- 2. SET A UNIQUE APP ID FOR YOUR APP ---
+        // This makes sure your data is separate from others.
+        // Choose something unique like 'my-chat-app-123'
+        const appId = 'default-app-id';
+
+        // The authentication token is only used in my preview environment.
+        // It will be null on your GitHub page, which is fine, as the code
+        // will automatically sign you in anonymously instead.
+        const authToken = null;
 
         setLogLevel('debug'); // Enable debug logging for Firestore
 
